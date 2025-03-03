@@ -9,12 +9,26 @@ Este repositório configura o SonarQube e o PostgreSQL usando Docker Compose.
    git clone <repo_url>
    cd sonar-labs
    ```
-2. Inicie os containers:
+
+2. Crie os diretórios necessários para armazenar os dados no host:
+   ```sh
+   mkdir -p postgres_data
+   mkdir -p sonarqube_extensions
+   ```
+
+3. Ajuste as permissões dos diretórios (se necessário):
+   ```sh
+   sudo chown -R 999:999 postgres_data
+   ```
+
+4. Inicie os containers:
    ```sh
    docker compose up -d
    ```
-3. Acesse o SonarQube em: [http://localhost:9000](http://localhost:9000)
-4. Primeiro acesso:
+
+5. Acesse o SonarQube em: [http://localhost:9000](http://localhost:9000)
+
+6. Primeiro acesso:
    - Usuário: **admin**
    - Senha: **admin**
 
@@ -57,3 +71,15 @@ Se houver mais de uma solution no projeto, especifique:
 ```sh
 dotnet build .\DotNetOnion.Template.sln
 ```
+
+## Sobre o Armazenamento de Dados
+
+Este Docker Compose está configurado para armazenar os dados do PostgreSQL e as extensões do SonarQube diretamente no host, em vez de usar volumes gerenciados pelo Docker. Isso facilita o backup, a migração e o acesso direto aos dados.
+
+Os dados são armazenados nos seguintes diretórios:
+- `./postgres_data`: Contém os dados do banco PostgreSQL
+- `./sonarqube_extensions`: Contém as extensões e configurações do SonarQube
+
+## Nota para Usuários Windows
+
+Recomendamos o uso do WSL (Windows Subsystem for Linux) para executar o Docker e SonarQube, oferecendo melhor desempenho e compatibilidade.

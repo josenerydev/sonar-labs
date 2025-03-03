@@ -7,7 +7,7 @@ services:
       - POSTGRES_PASSWORD=sonar
       - POSTGRES_DB=sonarqube
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./postgres_data:/var/lib/postgresql/data
 
   sonarqube:
     image: sonarqube:community
@@ -22,8 +22,4 @@ services:
       - SONAR_JDBC_USERNAME=sonar
       - SONAR_JDBC_PASSWORD=sonar
     volumes:
-      - sonarqube_extensions:/opt/sonarqube/extensions
-
-volumes:
-  postgres_data:
-  sonarqube_extensions:
+      - ./sonarqube_extensions:/opt/sonarqube/extensions
