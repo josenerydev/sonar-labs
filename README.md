@@ -83,3 +83,13 @@ Os dados são armazenados nos seguintes diretórios:
 ## Nota para Usuários Windows
 
 Recomendamos o uso do WSL (Windows Subsystem for Linux) para executar o Docker e SonarQube, oferecendo melhor desempenho e compatibilidade.
+
+
+
+Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio" -Recurse -Filter MSBuild.exe
+msbuild /version
+SonarScanner.MSBuild.exe --version
+
+
+C:\SonarScanner\
+C:\sonar-scanner-cli\bin
