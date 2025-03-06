@@ -2,128 +2,28 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Exemplo Didático - Sync vs. Async</title>
+  <title>Sync vs. Async - 3 Reqs x 2 Threads (Loop + Contadores)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f7f7f7;
       margin: 20px;
+      background: #f7f7f7;
     }
     h1 {
       text-align: center;
+      margin-bottom: 10px;
     }
     .info {
       max-width: 900px;
-      margin: 0 auto;
+      margin: 0 auto 20px;
       background: #fff;
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 5px;
-      margin-bottom: 20px;
     }
-    .diagram-container {
-      display: flex;
-      justify-content: space-evenly;
-      flex-wrap: wrap;
-    }
-    .section {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      width: 460px;
-      margin: 10px;
-      padding: 10px;
-      position: relative;
-    }
-    .section h2 {
-      text-align: center;
-      margin-top: 0;
-    }
-    .diagram {
-      position: relative;
-      width: 440px;
-      height: 320px;
-      border: 1px dashed #ccc;
-      margin: 0 auto;
-      overflow: hidden;
-    }
-
-    /* CLIENTES (3) - quadradinhos à esquerda */
-    .client-box {
-      width: 100px; 
-      height: 40px;
-      background: #cfe2ff;  /* azul claro */
-      border: 2px solid #6ea8fe; 
-      border-radius: 5px;
-      color: #333;
-      text-align: center;
-      line-height: 40px;
-      position: absolute;
-      font-weight: bold;
-    }
-
-    /* THREAD POOL (retângulo grande com leve destaque) */
-    .thread-pool {
-      width: 120px;
-      height: 220px;
-      border: 2px dashed #5cb85c;
-      border-radius: 5px;
-      background: #f0fff0;
-      position: absolute;
-    }
-    .thread-pool-label {
-      position: absolute;
-      width: 120px;
-      text-align: center;
-      font-weight: bold;
-      color: #5cb85c;
-    }
-
-    /* THREADS dentro do pool (retângulos) */
-    .thread-box {
-      width: 100px; 
-      height: 35px;
-      border: 2px solid #5cb85c; 
-      background: #e3f9e3;
-      border-radius: 5px;
-      text-align: center;
-      line-height: 35px;
-      color: #333;
-      position: absolute;
-      font-weight: bold;
-    }
-
-    /* BANCO DE DADOS (retângulo/cilindro estilizado) */
-    .database {
-      width: 60px;
-      height: 80px;
-      border: 2px solid #f0ad4e;
-      border-radius: 5px;
-      background: #fdf6ea; /* Amarelinho */
-      color: #f0ad4e;
-      text-align: center;
-      line-height: 80px;
-      font-weight: bold;
-      position: absolute;
-    }
-
-    /* SETAS (requisições) - vamos usar divs pequenas com texto "=>" para simbolizar setinhas em movimento */
-    .arrow {
-      position: absolute;
-      font-size: 22px;
-      font-weight: bold;
-      color: #6c757d;
-      user-select: none;
-      pointer-events: none;
-    }
-    /* Setas que estão "voltando" (vermelho, p.ex.) */
-    .arrow.return {
-      color: #d9534f;
-    }
-
     .controls {
       text-align: center;
-      margin-top: 10px;
+      margin-bottom: 20px;
     }
     button {
       margin: 5px;
@@ -136,114 +36,267 @@
     button:hover {
       background: #ddd;
     }
+    .stats-container {
+      display: flex;
+      justify-content: space-around;
+      max-width: 900px;
+      margin: 0 auto 20px;
+    }
+    .stats-box {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      width: 420px;
+      padding: 10px;
+      text-align: center;
+      margin: 10px;
+    }
+    .stats-box h2 {
+      margin-top: 0;
+    }
+    .stat-line {
+      margin: 5px 0;
+      font-size: 16px;
+    }
+    .diagram-container {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+    }
+    .section {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      width: 420px;
+      margin: 10px;
+      padding: 10px;
+      position: relative;
+    }
+    .section h3 {
+      text-align: center;
+      margin-top: 0;
+    }
+    .diagram {
+      position: relative;
+      width: 400px;
+      height: 320px;
+      border: 1px dashed #ccc;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+    /* CLIENTES – quadrados */
+    .client-box {
+      width: 80px; 
+      height: 40px;
+      background: #cfe2ff;
+      border: 2px solid #6ea8fe; 
+      border-radius: 5px;
+      color: #333;
+      text-align: center;
+      line-height: 40px;
+      position: absolute;
+      font-weight: bold;
+    }
+    /* THREAD POOL */
+    .thread-pool {
+      width: 100px;
+      height: 180px;
+      border: 2px dashed #5cb85c;
+      border-radius: 5px;
+      background: #f0fff0;
+      position: absolute;
+    }
+    .thread-pool-label {
+      position: absolute;
+      width: 100px;
+      text-align: center;
+      font-weight: bold;
+      color: #5cb85c;
+    }
+    /* DUAS THREADS */
+    .thread-box {
+      width: 80px; 
+      height: 35px;
+      border: 2px solid #5cb85c; 
+      background: #e3f9e3;
+      border-radius: 5px;
+      text-align: center;
+      line-height: 35px;
+      color: #333;
+      position: absolute;
+      font-weight: bold;
+    }
+    /* BANCO DE DADOS */
+    .database {
+      width: 60px;
+      height: 80px;
+      border: 2px solid #f0ad4e;
+      border-radius: 5px;
+      background: #fdf6ea;
+      color: #f0ad4e;
+      text-align: center;
+      line-height: 80px;
+      font-weight: bold;
+      position: absolute;
+    }
+    /* SETAS (DIVs) */
+    .arrow {
+      position: absolute;
+      font-size: 20px;
+      font-weight: bold;
+      color: #6c757d;
+      user-select: none;
+      pointer-events: none;
+    }
+    .arrow.return {
+      color: #d9534f;
+    }
   </style>
 </head>
 <body>
 
-<h1>Fluxo Síncrono vs. Assíncrono em ASP.NET Core</h1>
+<h1>3 Reqs x 2 Threads – Síncrono vs. Assíncrono (Loop + Contadores)</h1>
 
 <div class="info">
-  Este exemplo mostra, de forma bem didática, como funcionam as requisições 
-  enviadas por 3 clientes (esquerda) até o <em>Thread Pool</em> do ASP.NET Core, e então 
-  ao banco de dados (direita).  
-  <br><br>
-  <strong>Síncrono:</strong> a thread fica “presa” aguardando o banco, não liberando o 
-  <em>Thread Pool</em> para outras requisições.  
-  <br>
-  <strong>Assíncrono:</strong> assim que a requisição inicia I/O no DB (com <code>await</code>), 
-  a thread é devolvida ao <em>Thread Pool</em> para tratar outra requisição.
+  <p>
+    Neste exemplo, três requisições chegam simultaneamente (em intervalos fixos) 
+    em cada cenário: <strong>Síncrono</strong> e <strong>Assíncrono</strong>, 
+    mas o servidor tem apenas <em>2 Threads</em> disponíveis.
+  </p>
+  <p>
+    Observe que, no modo <strong>Síncrono</strong>, se as duas threads 
+    estiverem ocupadas (aguardando o DB por 3s), a terceira requisição 
+    entra numa fila de espera. No modo <strong>Assíncrono</strong>, cada 
+    requisição “libera” a thread assim que o I/O inicia, permitindo que 
+    outra requisição seja atendida imediatamente (a não ser que todas as 
+    threads estejam ocupadas no exato instante).
+  </p>
+  <p>
+    Clique em <strong>Play</strong> para iniciar as duas simulações 
+    simultaneamente. Novas requisições são geradas a cada 2s em cada diagrama. 
+    Acompanhe as estatísticas de quantas requisições foram enviadas, concluídas 
+    e o tempo de execução total. Clique em <strong>Pause</strong> para parar de 
+    gerar novas requisições (as em andamento terminarão).
+  </p>
+</div>
+
+<div class="controls">
+  <button onclick="play()">Play</button>
+  <button onclick="pause()">Pause</button>
+</div>
+
+<div class="stats-container">
+  <div class="stats-box" id="sync-stats">
+    <h2>Síncrono</h2>
+    <div class="stat-line">Tempo (s): <span id="sync-time">0</span></div>
+    <div class="stat-line">Req. Enviadas: <span id="sync-sent">0</span></div>
+    <div class="stat-line">Req. Concluídas: <span id="sync-done">0</span></div>
+  </div>
+  <div class="stats-box" id="async-stats">
+    <h2>Assíncrono</h2>
+    <div class="stat-line">Tempo (s): <span id="async-time">0</span></div>
+    <div class="stat-line">Req. Enviadas: <span id="async-sent">0</span></div>
+    <div class="stat-line">Req. Concluídas: <span id="async-done">0</span></div>
+  </div>
 </div>
 
 <div class="diagram-container">
-
-  <!-- Seção: SÍNCRONO -->
+  
+  <!-- Diagrama SÍNCRONO -->
   <div class="section">
-    <h2>Síncrono</h2>
+    <h3>Síncrono (2 Threads, 3 Reqs chegando em loop)</h3>
     <div class="diagram" id="sync-diagram">
-      <!-- 3 Clients -->
-      <div class="client-box" style="left:20px; top:30px;">Sync Req</div>
-      <div class="client-box" style="left:20px; top:120px;">Sync Req</div>
-      <div class="client-box" style="left:20px; top:210px;">Sync Req</div>
+      <!-- 2 threads no pool -->
+      <div class="thread-pool" style="left:140px; top:60px;"></div>
+      <div class="thread-pool-label" style="left:140px; top:40px;">Thread Pool</div>
 
-      <!-- Thread Pool -->
-      <div class="thread-pool" style="left:160px; top:50px;"></div>
-      <div class="thread-pool-label" style="left:160px; top:30px;">Thread Pool</div>
+      <div class="thread-box" style="left:150px; top:80px;">Thread #1</div>
+      <div class="thread-box" style="left:150px; top:140px;">Thread #2</div>
 
-      <!-- 3 Threads dentro do pool -->
-      <div class="thread-box" style="left:170px; top:70px;">Thread</div>
-      <div class="thread-box" style="left:170px; top:120px;">Thread</div>
-      <div class="thread-box" style="left:170px; top:170px;">Thread</div>
-
-      <!-- DB à direita -->
-      <div class="database" style="left:340px; top:110px;">DB</div>
-    </div>
-    <div class="controls">
-      <button onclick="startSync()">Iniciar Síncrono</button>
+      <!-- DB -->
+      <div class="database" style="left:310px; top:100px;">DB</div>
     </div>
   </div>
 
-  <!-- Seção: ASSÍNCRONO -->
+  <!-- Diagrama ASSÍNCRONO -->
   <div class="section">
-    <h2>Assíncrono</h2>
+    <h3>Assíncrono (2 Threads, 3 Reqs chegando em loop)</h3>
     <div class="diagram" id="async-diagram">
-      <!-- 3 Clients -->
-      <div class="client-box" style="left:20px; top:30px;">Async Req</div>
-      <div class="client-box" style="left:20px; top:120px;">Async Req</div>
-      <div class="client-box" style="left:20px; top:210px;">Async Req</div>
+      <!-- 2 threads no pool -->
+      <div class="thread-pool" style="left:140px; top:60px;"></div>
+      <div class="thread-pool-label" style="left:140px; top:40px;">Thread Pool</div>
 
-      <!-- Thread Pool -->
-      <div class="thread-pool" style="left:160px; top:50px;"></div>
-      <div class="thread-pool-label" style="left:160px; top:30px;">Thread Pool</div>
+      <div class="thread-box" style="left:150px; top:80px;">Thread #1</div>
+      <div class="thread-box" style="left:150px; top:140px;">Thread #2</div>
 
-      <!-- 3 Threads dentro do pool -->
-      <div class="thread-box" style="left:170px; top:70px;">Thread</div>
-      <div class="thread-box" style="left:170px; top:120px;">Thread</div>
-      <div class="thread-box" style="left:170px; top:170px;">Thread</div>
-
-      <!-- DB à direita -->
-      <div class="database" style="left:340px; top:110px;">DB</div>
-    </div>
-    <div class="controls">
-      <button onclick="startAsync()">Iniciar Assíncrono</button>
+      <!-- DB -->
+      <div class="database" style="left:310px; top:100px;">DB</div>
     </div>
   </div>
 
 </div>
 
 <script>
-  /*
-    Para simplificar, cada "requisição" será uma DIV .arrow (com "=>")
-    que vamos animar manualmente via JS, movendo de left/top iniciais
-    até o DB, e depois voltando, simulando uma operação.
-  */
+  /**************************************************************************
+   * Variáveis de controle geral
+   **************************************************************************/
+  let running = false;         // se estamos rodando ou pausado
+  let startTimeSync = 0;       // marca tempo inicial (ms) do Sync
+  let startTimeAsync = 0;      // marca tempo inicial (ms) do Async
+  let syncTimeInterval = null; // interval para atualizar tempo
+  let asyncTimeInterval = null;
+  let syncSpawnInterval = null; 
+  let asyncSpawnInterval = null;
 
-  // Função utilitária para criar uma setinha (requisição)
+  // Threads livres/ocupadas (Sync e Async)
+  let syncThreads = [true, true]; 
+  let asyncThreads = [true, true];
+
+  // Contadores
+  let syncSent = 0;
+  let syncDone = 0;
+  let asyncSent = 0;
+  let asyncDone = 0;
+
+  // Duração de "I/O no DB" (ms)
+  const DB_DURATION = 3000;
+  // Tempo de CPU rápido para Async (antes de liberar a thread)
+  const CPU_DURATION = 500;
+  // De quanto em quanto tempo geramos 3 requisições "simultâneas"
+  const SPAWN_INTERVAL = 2000;
+
+  /**************************************************************************
+   * Funções utilitárias de animação (setas)
+   **************************************************************************/
   function createArrow(diagramId, x, y, text, color) {
-    const diagram = document.getElementById(diagramId);
+    const diag = document.getElementById(diagramId);
     const arrow = document.createElement('div');
     arrow.className = 'arrow';
     arrow.textContent = text || '=>';
     arrow.style.left = x + 'px';
     arrow.style.top  = y + 'px';
     if (color) arrow.style.color = color;
-    diagram.appendChild(arrow);
+    diag.appendChild(arrow);
     return arrow;
   }
 
-  // Move "elem" de (x1, y1) para (x2, y2) em 'duration' ms
+  // Move um elemento de (x1,y1) -> (x2,y2) em 'duration' ms
   function moveElement(elem, x1, y1, x2, y2, duration, callback) {
-    const steps = 40;
-    let step = 0;
+    const steps = 30;
     const interval = duration / steps;
+    let step = 0;
     const dx = (x2 - x1) / steps;
     const dy = (y2 - y1) / steps;
 
     const anim = setInterval(() => {
+      if (!running) {
+        // Se foi pausado, não interrompemos a animação "no meio"
+        // (poderíamos pausar, mas complicaria).
+        // Aqui só paramos de criar novas requests. 
+      }
       step++;
-      const nx = x1 + dx * step;
-      const ny = y1 + dy * step;
-      elem.style.left = nx + 'px';
-      elem.style.top  = ny + 'px';
+      elem.style.left = (x1 + dx * step) + 'px';
+      elem.style.top  = (y1 + dy * step) + 'px';
       if (step >= steps) {
         clearInterval(anim);
         if (callback) callback();
@@ -251,112 +304,231 @@
     }, interval);
   }
 
-  // Limpa as setas antigas
-  function clearArrows(diagramId) {
-    const diag = document.getElementById(diagramId);
-    const oldArrows = diag.querySelectorAll('.arrow');
-    oldArrows.forEach(a => a.remove());
+  /**************************************************************************
+   * Lógica para o fluxo SÍNCRONO
+   *   - 2 threads
+   *   - 3 requests simultâneas a cada SPAWN_INTERVAL
+   *   - Se não houver thread livre, a request ESPERA
+   *   - Bloqueia thread por DB_DURATION
+   **************************************************************************/
+  function spawnSyncRequests() {
+    // 3 "clientes" surgindo ao mesmo tempo
+    let positions = [
+      { x:20, y:40  },
+      { x:20, y:120 },
+      { x:20, y:200 }
+    ];
+    positions.forEach(pos => {
+      if (!running) return;
+      syncSent++;
+      document.getElementById("sync-sent").textContent = syncSent;
+      const arrow = createArrow("sync-diagram", pos.x, pos.y, "=>");
+      allocateThreadSync(arrow, pos);
+    });
   }
 
-  /* ======================================
-       FLUXO SÍNCRONO
-     ====================================== */
-  function startSync() {
-    const diagId = 'sync-diagram';
-    clearArrows(diagId);
+  function allocateThreadSync(arrow, startPos) {
+    if (!running) return;
+    // Acha uma thread livre
+    const idx = syncThreads.findIndex(t => t === true);
+    if (idx >= 0) {
+      // ocupa
+      syncThreads[idx] = false;
+      animateSyncRequest(arrow, idx, startPos.x, startPos.y, () => {
+        syncThreads[idx] = true; // libera
+        syncDone++;
+        document.getElementById("sync-done").textContent = syncDone;
+      });
+    } else {
+      // nenhuma thread livre => espera um pouco e tenta de novo
+      setTimeout(() => {
+        allocateThreadSync(arrow, startPos);
+      }, 300);
+    }
+  }
 
-    // Posições iniciais das setinhas (3 clientes)
-    // (client1, client2, client3)
-    const requests = [
-      { x: 50,  y: 45 },
-      { x: 50,  y: 135 },
-      { x: 50,  y: 225 },
+  function animateSyncRequest(arrow, threadIndex, startX, startY, onFinish) {
+    // Posições fixas das 2 threads e do DB
+    const threadPos = [
+      { x:150, y:95 },
+      { x:150, y:155 }
     ];
+    const dbPos = { x:310, y:120 };
 
-    // Sequência 100% SÍNCRONA => A 2ª começa depois que a 1ª termina, etc.
-    // Em "vida real", cada request usaria uma thread e a ficaria bloqueada,
-    // mas aqui só simulamos "fila" para mostrar o bloqueio.
-    animateSyncRequest(requests[0], () => {
-      animateSyncRequest(requests[1], () => {
-        animateSyncRequest(requests[2], () => {
-          console.log("Fluxo Síncrono finalizado.");
-        });
+    const tX = threadPos[threadIndex].x;
+    const tY = threadPos[threadIndex].y;
+
+    // 1) Client -> Thread
+    moveElement(arrow, startX, startY, tX, tY, 800, () => {
+      if (!running) return;
+      // 2) Thread -> DB
+      moveElement(arrow, tX, tY, dbPos.x, dbPos.y, 1000, () => {
+        if (!running) return;
+        // 3) Bloqueio 3s
+        setTimeout(() => {
+          if (!running) return;
+          // 4) Volta DB -> Thread
+          arrow.classList.add('return');
+          moveElement(arrow, dbPos.x, dbPos.y, tX, tY, 1000, () => {
+            // 5) Thread -> Client
+            moveElement(arrow, tX, tY, startX, startY, 800, () => {
+              if (onFinish) onFinish();
+              // remove arrow da tela
+              arrow.remove();
+            });
+          });
+        }, DB_DURATION);
       });
     });
+  }
 
-    function animateSyncRequest(pos, onDone) {
-      // cria a setinha
-      const arrow = createArrow(diagId, pos.x, pos.y, '=>');
-      // Posições do Thread Pool e DB (aproximadas)
-      const threadX = 180, dbX = 360;
-      const midY = pos.y + 30; // "subir" um pouco p/ cair dentro do thread box
+  /**************************************************************************
+   * Lógica para o fluxo ASSÍNCRONO
+   *   - 2 threads
+   *   - 3 requests simultâneas a cada SPAWN_INTERVAL
+   *   - Se não houver thread livre no exato momento, espera
+   *   - Assim que inicia DB, thread é liberada
+   **************************************************************************/
+  function spawnAsyncRequests() {
+    let positions = [
+      { x:20, y:40,  color:'#d9534f' },
+      { x:20, y:120, color:'#5bc0de' },
+      { x:20, y:200, color:'#5cb85c' }
+    ];
+    positions.forEach(pos => {
+      if (!running) return;
+      asyncSent++;
+      document.getElementById("async-sent").textContent = asyncSent;
+      const arrow = createArrow("async-diagram", pos.x, pos.y, "=>", pos.color);
+      allocateThreadAsync(arrow, pos);
+    });
+  }
 
-      // 1) Client -> Thread
-      moveElement(arrow, pos.x, pos.y, threadX, midY, 1000, () => {
-        // 2) Thread -> DB
-        moveElement(arrow, threadX, midY, dbX, midY, 1000, () => {
-          // 3) "Fica bloqueado" 3s no DB
+  function allocateThreadAsync(arrow, startPos) {
+    if (!running) return;
+    const idx = asyncThreads.findIndex(t => t === true);
+    if (idx >= 0) {
+      asyncThreads[idx] = false; // ocupa
+      animateAsyncRequest(arrow, idx, startPos.x, startPos.y, () => {
+        // Thread liberada rápido (após CPU)
+        asyncThreads[idx] = true;
+      });
+    } else {
+      // nenhuma thread livre
+      setTimeout(() => {
+        allocateThreadAsync(arrow, startPos);
+      }, 300);
+    }
+  }
+
+  function animateAsyncRequest(arrow, threadIndex, startX, startY, onThreadFreed) {
+    const threadPos = [
+      { x:150, y:95 },
+      { x:150, y:155 }
+    ];
+    const dbPos = { x:310, y:120 };
+    const tX = threadPos[threadIndex].x;
+    const tY = threadPos[threadIndex].y;
+
+    // 1) Client -> Thread
+    moveElement(arrow, startX, startY, tX, tY, 800, () => {
+      if (!running) return;
+      // 2) Pequeno uso de CPU (500ms)
+      setTimeout(() => {
+        // thread é liberada (await no DB)
+        if (onThreadFreed) onThreadFreed();
+        if (!running) return;
+
+        // 3) Arrow vai ao DB
+        moveElement(arrow, tX, tY, dbPos.x, dbPos.y, 1000, () => {
+          if (!running) return;
+          // 4) Espera 3s no DB
           setTimeout(() => {
-            // 4) Volta do DB -> Thread
+            if (!running) return;
+            // 5) Retorna do DB p/ Thread
             arrow.classList.add('return');
-            moveElement(arrow, dbX, midY, threadX, midY, 1000, () => {
-              // 5) Thread -> Client
-              moveElement(arrow, threadX, midY, pos.x, pos.y, 1000, () => {
-                if (onDone) onDone();
+            moveElement(arrow, dbPos.x, dbPos.y, tX, tY, 1000, () => {
+              // 6) Thread -> Client
+              moveElement(arrow, tX, tY, startX, startY, 800, () => {
+                asyncDone++;
+                document.getElementById("async-done").textContent = asyncDone;
+                arrow.remove();
               });
             });
-          }, 3000);
+          }, DB_DURATION);
         });
-      });
-    }
-  }
-
-  /* ======================================
-       FLUXO ASSÍNCRONO
-     ====================================== */
-  function startAsync() {
-    const diagId = 'async-diagram';
-    clearArrows(diagId);
-
-    const requests = [
-      { x: 50,  y: 45,  color:'#d9534f' },
-      { x: 50,  y: 135, color:'#5bc0de' },
-      { x: 50,  y: 225, color:'#5cb85c' },
-    ];
-    
-    // Iniciam quase ao mesmo tempo, sem fila
-    requests.forEach((reqData, i) => {
-      setTimeout(() => {
-        animateAsyncRequest(reqData);
-      }, i * 500); // pequeno delay para visualizar melhor
+      }, CPU_DURATION);
     });
-
-    function animateAsyncRequest(pos) {
-      const arrow = createArrow(diagId, pos.x, pos.y, '=>', pos.color);
-      const threadX = 180, dbX = 360;
-      const midY = pos.y + 30;
-
-      // 1) Client -> Thread (rápido)
-      moveElement(arrow, pos.x, pos.y, threadX, midY, 1000, () => {
-        // 2) Curto trabalho de CPU (500ms)
-        setTimeout(() => {
-          // *** Em Async, a Thread é liberada neste momento (await) ***
-          // 3) Seta prossegue ao DB sem bloquear a thread
-          moveElement(arrow, threadX, midY, dbX, midY, 1000, () => {
-            // 4) Espera 3s de I/O no DB
-            setTimeout(() => {
-              // 5) Resposta do DB (arrow volta)
-              arrow.classList.add('return');
-              moveElement(arrow, dbX, midY, threadX, midY, 1000, () => {
-                // 6) Thread finaliza e volta pro client
-                moveElement(arrow, threadX, midY, pos.x, pos.y, 1000);
-              });
-            }, 3000);
-          });
-        }, 500);
-      });
-    }
   }
+
+  /**************************************************************************
+   * Play, Pause, atualização de tempo e estatísticas
+   **************************************************************************/
+  function play() {
+    if (running) return;  // já está rodando
+
+    // Reset de variáveis
+    running = true;
+    syncThreads = [true, true];
+    asyncThreads = [true, true];
+
+    syncSent = 0;
+    syncDone = 0;
+    asyncSent = 0;
+    asyncDone = 0;
+    document.getElementById("sync-sent").textContent = "0";
+    document.getElementById("sync-done").textContent = "0";
+    document.getElementById("async-sent").textContent = "0";
+    document.getElementById("async-done").textContent = "0";
+
+    // Limpamos setas antigas (caso existam)
+    clearArrows("sync-diagram");
+    clearArrows("async-diagram");
+
+    // Marca tempos
+    startTimeSync = Date.now();
+    startTimeAsync = Date.now();
+
+    // Inicia intervals
+    syncTimeInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimeSync)/1000);
+      document.getElementById("sync-time").textContent = elapsed;
+    }, 500);
+
+    asyncTimeInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimeAsync)/1000);
+      document.getElementById("async-time").textContent = elapsed;
+    }, 500);
+
+    // A cada 2s, geramos 3 requests simultâneas em cada diagrama
+    spawnSyncRequests();  // gera imediatamente a 1ª leva
+    spawnAsyncRequests();
+    syncSpawnInterval = setInterval(() => {
+      if (!running) return;
+      spawnSyncRequests();
+    }, SPAWN_INTERVAL);
+    asyncSpawnInterval = setInterval(() => {
+      if (!running) return;
+      spawnAsyncRequests();
+    }, SPAWN_INTERVAL);
+  }
+
+  function pause() {
+    running = false;
+    // Paramos apenas de spawnar novas requisições
+    if (syncSpawnInterval) clearInterval(syncSpawnInterval);
+    if (asyncSpawnInterval) clearInterval(asyncSpawnInterval);
+    // Paramos de atualizar contadores de tempo
+    if (syncTimeInterval) clearInterval(syncTimeInterval);
+    if (asyncTimeInterval) clearInterval(asyncTimeInterval);
+  }
+
+  // Remove todas as setas de um diagrama
+  function clearArrows(diagramId) {
+    const diag = document.getElementById(diagramId);
+    diag.querySelectorAll('.arrow').forEach(a => a.remove());
+  }
+
 </script>
 
 </body>
