@@ -588,6 +588,12 @@
   const DEBUG = true;
   console.log = DEBUG ? console.log.bind(console) : function(){};
   
+  // Armazenar timeouts ativos para manipulação de pause/resume
+  const activeTimeouts = {
+    sync: [],
+    async: []
+  };
+  
   // Função para adicionar eventos à lista
   function addEvent(type, message, category = '') {
     // Limitar a 10 eventos mais recentes
@@ -628,6 +634,8 @@
       blocked: 0,
       available: 2,
       startTime: 0,
+      pauseStartTime: 0,
+      totalPauseTime: 0,
       endTime: 0,
       endTimeSet: false,
       intervalId: null,
@@ -641,6 +649,8 @@
       available: 2,
       blocked: 0,
       startTime: 0,
+      pauseStartTime: 0,
+      totalPauseTime: 0,
       endTime: 0,
       endTimeSet: false,
       intervalId: null, 
@@ -686,6 +696,59 @@
     return arrow;
   }
 
+  // Timeout versão aprimorada que gerencia pausas
+  function createTimeout(callback, delay, type) {
+    if (animation[type].isPaused) {
+      // Se já estiver pausado, apenas registra para retomar depois
+      const timeoutObj = { callback, delay, remaining: delay };
+      activeTimeouts[type].push(timeoutObj);
+      return timeoutObj;
+    }
+    
+    const start = Date.now();
+    const timeoutObj = {
+      id: setTimeout(function() {
+        // Remover da lista de timeouts ativos
+        const index = activeTimeouts[type].indexOf(timeoutObj);
+        if (index > -1) {
+          activeTimeouts[type].splice(index, 1);
+        }
+        callback();
+      }, delay),
+      callback,
+      delay,
+      start,
+      remaining: delay
+    };
+    
+    activeTimeouts[type].push(timeoutObj);
+    return timeoutObj;
+  }
+  
+  // Pausar todos os timeouts ativos
+  function pauseAllTimeouts(type) {
+    activeTimeouts[type].forEach(timeoutObj => {
+      clearTimeout(timeoutObj.id);
+      timeoutObj.remaining = timeoutObj.delay - (Date.now() - timeoutObj.start);
+      if (timeoutObj.remaining < 0) timeoutObj.remaining = 0;
+    });
+  }
+  
+  // Retomar todos os timeouts pausados
+  function resumeAllTimeouts(type) {
+    activeTimeouts[type].forEach(timeoutObj => {
+      timeoutObj.id = setTimeout(function() {
+        // Remover da lista de timeouts ativos
+        const index = activeTimeouts[type].indexOf(timeoutObj);
+        if (index > -1) {
+          activeTimeouts[type].splice(index, 1);
+        }
+        timeoutObj.callback();
+      }, timeoutObj.remaining);
+      timeoutObj.start = Date.now();
+    });
+  }
+
   // Move "elem" de (x1, y1) para (x2, y2) em 'duration' ms
   function moveElement(elem, x1, y1, x2, y2, duration, callback, type) {
     if (!elem || !document.body.contains(elem)) return;
@@ -711,10 +774,11 @@
       return;
     }
 
-    const anim = setInterval(() => {
+    let animId;
+    const anim = () => {
       // Verificar se o elemento ainda existe
-      if (!document.body.contains(elem)) {
-        clearInterval(anim);
+      if (!elem || !document.body.contains(elem)) {
+        cancelAnimationFrame(animId);
         if (type) {
           animation[type].animationsInProgress--;
         }
@@ -723,11 +787,11 @@
       
       // Se estiver pausado, interromper
       if (type && animation[type].isPaused) {
-        clearInterval(anim);
+        cancelAnimationFrame(animId);
         const pausedAnimation = {
           elem, x1, y1, x2, y2, duration, callback, type,
-          currentX: elem.style.left.replace('px', ''),
-          currentY: elem.style.top.replace('px', ''),
+          currentX: elem.style.left.replace('px', '') || x1,
+          currentY: elem.style.top.replace('px', '') || y1,
           step
         };
         animation[type].pausedAnimations.push(pausedAnimation);
@@ -740,14 +804,19 @@
       elem.style.left = nx + 'px';
       elem.style.top = ny + 'px';
       if (step >= steps) {
-        clearInterval(anim);
+        cancelAnimationFrame(animId);
         // Decrementar contador de animações em andamento
         if (type) {
           animation[type].animationsInProgress--;
         }
         if (callback) callback();
+        return;
       }
-    }, interval);
+      
+      animId = requestAnimationFrame(anim);
+    };
+    
+    animId = requestAnimationFrame(anim);
   }
 
   // Limpa as setas antigas e reseta o estado
@@ -801,12 +870,21 @@
   function updateTimer(type) {
     if (!animation[type].running) return;
     
-    const elapsed = (Date.now() - animation[type].startTime) / 1000;
+    let elapsed;
+    
+    if (animation[type].isPaused) {
+      // Se estiver pausado, usa o tempo até o início da pausa
+      elapsed = (animation[type].pauseStartTime - animation[type].startTime - animation[type].totalPauseTime) / 1000;
+    } else {
+      // Senão, usa o tempo atual menos o tempo total de pausa
+      elapsed = (Date.now() - animation[type].startTime - animation[type].totalPauseTime) / 1000;
+    }
+    
     const timer = document.getElementById(`${type}-timer`);
     timer.textContent = `${elapsed.toFixed(1)}s`;
     
     // Log para debug
-    if (DEBUG && elapsed % 2 < 0.1) {
+    if (DEBUG && Math.floor(elapsed) % 2 === 0 && elapsed % 1 < 0.1) {
       console.log(`[${type.toUpperCase()}] Elapsed: ${elapsed.toFixed(1)}s, Completed: ${animation[type].completed}/3`);
     }
     
@@ -815,7 +893,7 @@
       // Marcar que já registramos o tempo final para evitar múltiplas chamadas
       animation[type].endTimeSet = true;
       animation[type].endTime = Date.now();
-      const totalTime = ((animation[type].endTime - animation[type].startTime) / 1000).toFixed(1);
+      const totalTime = ((animation[type].endTime - animation[type].startTime - animation[type].totalPauseTime) / 1000).toFixed(1);
       document.getElementById(`${type}-time`).textContent = `${type === 'sync' ? 'Síncrono' : 'Assíncrono'}: ${totalTime}s`;
       
       // Log de conclusão
@@ -833,12 +911,12 @@
       }
       
       // Reiniciar automaticamente após pequena pausa
-      setTimeout(() => {
+      createTimeout(() => {
         if (!animation[type].isPaused) {
           resetAnimation(type);
           startAnimation(type);
         }
-      }, 5000); // Tempo maior para visualizar o estado final
+      }, 5000, type); // Tempo maior para visualizar o estado final
     }
   }
 
@@ -858,6 +936,7 @@
     // Configurar estado
     animation[type].running = true;
     animation[type].startTime = Date.now();
+    animation[type].totalPauseTime = 0;
     animation[type].intervalId = setInterval(() => updateTimer(type), 100);
     
     addEvent(type, `Iniciando animação ${type === 'sync' ? 'síncrona' : 'assíncrona'}`, 'thread');
@@ -872,9 +951,17 @@
   
   // Pausar animação
   function pauseAnimation(type) {
-    if (!animation[type].running) return;
+    if (!animation[type].running || animation[type].isPaused) return;
+    
+    // Gravar o tempo de início da pausa
     animation[type].isPaused = true;
-    console.log(`[${type.toUpperCase()}] Animation paused`);
+    animation[type].pauseStartTime = Date.now();
+    
+    // Pausar todos os timeouts
+    pauseAllTimeouts(type);
+    
+    addEvent(type, `Animação pausada`, 'thread');
+    console.log(`[${type.toUpperCase()}] Animation paused at ${animation[type].pauseStartTime}`);
   }
   
   // Pausar ambas animações
@@ -890,13 +977,24 @@
   function resumeAnimation(type) {
     if (!animation[type].running || !animation[type].isPaused) return;
     
+    // Calcular o tempo total de pausa
+    const pauseDuration = Date.now() - animation[type].pauseStartTime;
+    animation[type].totalPauseTime += pauseDuration;
+    
+    // Desmarcar pausa
     animation[type].isPaused = false;
-    console.log(`[${type.toUpperCase()}] Animation resumed`);
+    
+    addEvent(type, `Animação retomada`, 'thread');
+    console.log(`[${type.toUpperCase()}] Animation resumed. Pause duration: ${pauseDuration}ms, Total pause: ${animation[type].totalPauseTime}ms`);
+    
+    // Retomar timeouts
+    resumeAllTimeouts(type);
     
     // Retomar animações pausadas
-    const pausedAnimations = animation[type].pausedAnimations;
-    while (pausedAnimations.length > 0) {
-      const anim = pausedAnimations.pop();
+    const pausedAnimations = [...animation[type].pausedAnimations];
+    animation[type].pausedAnimations = [];
+    
+    pausedAnimations.forEach(anim => {
       moveElement(
         anim.elem, 
         parseFloat(anim.currentX), 
@@ -907,7 +1005,7 @@
         anim.callback,
         anim.type
       );
-    }
+    });
   }
   
   // Resetar animação
@@ -916,6 +1014,12 @@
     
     // Parar qualquer animação em andamento
     clearInterval(animation[type].intervalId);
+    
+    // Limpar todos os timeouts ativos
+    for (const timeoutObj of activeTimeouts[type]) {
+      clearTimeout(timeoutObj.id);
+    }
+    activeTimeouts[type] = [];
     
     // Limpar setas
     clearArrows(document.getElementById(`${type}-diagram`));
@@ -935,6 +1039,7 @@
     animation[type].isPaused = false;
     animation[type].pausedAnimations = [];
     animation[type].endTimeSet = false;
+    animation[type].totalPauseTime = 0;
     
     if (type === 'sync') {
       animation.sync.blocked = 0;
@@ -970,6 +1075,7 @@
       resumeAnimation('async');
       elements.playBoth.disabled = true;
       elements.pauseBoth.disabled = false;
+      elements.playBoth.textContent = '▶️ Iniciar Comparação';
       return;
     }
     
@@ -1013,13 +1119,13 @@
     
     // Start requests with slight delays
     if (!animation.sync.isPaused) {
-      setTimeout(() => startRequest(0), 200);
-      setTimeout(() => {
+      createTimeout(() => startRequest(0), 200, 'sync');
+      createTimeout(() => {
         if (!animation.sync.isPaused) startRequest(1);
-      }, 800);
-      setTimeout(() => {
+      }, 800, 'sync');
+      createTimeout(() => {
         if (!animation.sync.isPaused) startRequest(2);
-      }, 1400);
+      }, 1400, 'sync');
     }
     
     function startRequest(index) {
@@ -1076,7 +1182,7 @@
             addEvent('sync', `Aguardando DB por 2s (Thread ${threadNumber} bloqueada)`, 'db');
             
             // Timeout para simular operação de I/O
-            setTimeout(() => {
+            createTimeout(() => {
               if (!animation.sync.running) return;
               
               // Return DB -> Thread
@@ -1118,12 +1224,12 @@
                       console.log(`[SYNC] Starting waiting request ${waitingId}`);
                       
                       // Start waiting request after a small delay
-                      setTimeout(() => startRequest(waitingIndex), 300);
+                      createTimeout(() => startRequest(waitingIndex), 300, 'sync');
                     }
                   }, 'sync');
                 }, 'sync');
               }
-            }, animation.sync.isPaused ? 0 : 2000);
+            }, 2000, 'sync');
           }, 'sync');
         }, 'sync');
       } else {
@@ -1160,13 +1266,13 @@
     
     // Start requests with slight delays - same timing as sync for comparison
     if (!animation.async.isPaused) {
-      setTimeout(() => startRequest(0), 200);
-      setTimeout(() => {
+      createTimeout(() => startRequest(0), 200, 'async');
+      createTimeout(() => {
         if (!animation.async.isPaused) startRequest(1);
-      }, 800);
-      setTimeout(() => {
+      }, 800, 'async');
+      createTimeout(() => {
         if (!animation.async.isPaused) startRequest(2);
-      }, 1400);
+      }, 1400, 'async');
     }
     
     function startRequest(index) {
@@ -1210,7 +1316,7 @@
           addEvent('async', `Thread ${threadNumber} processando req ${request.id}`, 'thread');
           
           // Quick thread work (async setup)
-          setTimeout(() => {
+          createTimeout(() => {
             if (!animation.async.running) return;
             
             // *** Thread is released here (await) - KEY DIFFERENCE ***
@@ -1237,7 +1343,7 @@
               console.log(`[ASYNC] Starting waiting request ${waitingId} with newly available thread`);
               
               // Start waiting request after a small delay
-              setTimeout(() => startRequest(waitingIndex), 300);
+              createTimeout(() => startRequest(waitingIndex), 300, 'async');
             }
             
             // Arrow continues to DB without blocking thread
@@ -1253,7 +1359,7 @@
               addEvent('async', `Req ${request.id} executando no DB por 2s`, 'db');
               
               // Timeout para simular operação de I/O - same time as sync for comparison
-              setTimeout(() => {
+              createTimeout(() => {
                 if (!animation.async.running) return;
                 
                 // Remove from pending operations
@@ -1305,7 +1411,7 @@
                       // Quick completion work
                       statusIndicator.textContent = `Thread ${returnThreadNumber} finalizando requisição ${request.id} (pós-await)`;
                       
-                      setTimeout(() => {
+                      createTimeout(() => {
                         if (!animation.async.running) return;
                         
                         // Thread -> Client
@@ -1337,16 +1443,16 @@
                             console.log(`[ASYNC] Starting waiting request ${waitingId}`);
                             
                             // Start waiting request after a small delay
-                            setTimeout(() => startRequest(waitingIndex), 300);
+                            createTimeout(() => startRequest(waitingIndex), 300, 'async');
                           }
                         }, 'async');
-                      }, animation.async.isPaused ? 0 : 300);
+                      }, 300, 'async');
                     }, 'async');
                   }
                 }
-              }, animation.async.isPaused ? 0 : 2000);
+              }, 2000, 'async');
             }, 'async');
-          }, animation.async.isPaused ? 0 : 500);
+          }, 500, 'async');
         }, 'async');
       } else {
         // No thread available, make the client "wait"
