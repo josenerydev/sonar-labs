@@ -20,7 +20,7 @@
     /* BOUNDARIES - dotted boxes to represent process limits */
     .client-process {
       width: 110px;
-      height: 270px;
+      height: 320px;
       border: 2px dotted #6c757d;
       border-radius: 8px;
       background: rgba(108, 117, 125, 0.05);
@@ -42,7 +42,7 @@
     /* SERVER PROCESS - middle */
     .server-process {
       width: 160px;
-      height: 270px;
+      height: 320px;
       border: 2px dotted #5bc0de;
       border-radius: 8px;
       background: rgba(91, 192, 222, 0.05);
@@ -70,11 +70,11 @@
       background: rgba(240, 173, 78, 0.05);
       position: absolute;
       left: 320px;
-      top: 100px;
+      top: 120px;
     }
     .db-process-label {
       position: absolute;
-      top: 80px;
+      top: 100px;
       left: 335px;
       font-size: 12px;
       font-weight: bold;
@@ -87,7 +87,7 @@
     .diagram {
       position: relative;
       width: 100%;
-      height: 320px;
+      height: 380px;
       border: 1px dashed #dee2e6;
       overflow: hidden;
       background: #f9f9f9;
@@ -122,13 +122,13 @@
     /* THREAD POOL (retângulo grande com leve destaque) */
     .thread-pool {
       width: 120px;
-      height: 160px;
+      height: 180px;
       border: 2px dashed #5cb85c;
       border-radius: 5px;
       background: #f0fff0;
       position: absolute;
       left: 160px;
-      top: 80px;
+      top: 100px;
       z-index: 1;
     }
     .thread-pool-label {
@@ -138,7 +138,7 @@
       font-weight: bold;
       color: #5cb85c;
       left: 160px;
-      top: 60px;
+      top: 75px;
       font-size: 14px;
       z-index: 2;
     }
@@ -196,7 +196,7 @@
       font-weight: bold;
       position: absolute;
       left: 335px;
-      top: 130px;
+      top: 140px;
       z-index: 2;
     }
 
@@ -246,17 +246,19 @@
     /* Estado das operações */
     .status-indicator {
       position: absolute;
-      bottom: 10px;
+      bottom: 20px;
       left: 10px;
       right: 10px;
-      height: 25px;
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 3px;
+      height: 36px;
+      background: rgba(0, 0, 0, 0.07);
+      border-radius: 5px;
       text-align: center;
-      line-height: 25px;
+      line-height: 36px;
       font-weight: bold;
-      font-size: 12px;
+      font-size: 14px;
       color: #666;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
     /* Contador de requisições */
@@ -359,17 +361,17 @@
             <div class="db-process-label">Banco de Dados</div>
             
             <!-- 3 Clients -->
-            <div class="client-box" style="left:20px; top:50px;">Request 1</div>
-            <div class="client-box" style="left:20px; top:130px;">Request 2</div>
-            <div class="client-box" style="left:20px; top:210px;">Request 3</div>
+            <div class="client-box" style="left:20px; top:60px;">Request 1</div>
+            <div class="client-box" style="left:20px; top:150px;">Request 2</div>
+            <div class="client-box" style="left:20px; top:240px;">Request 3</div>
 
             <!-- Thread Pool -->
             <div class="thread-pool"></div>
             <div class="thread-pool-label">Thread Pool (2)</div>
 
             <!-- 2 Threads dentro do pool -->
-            <div class="thread-box" style="left:170px; top:100px;">Thread 1</div>
-            <div class="thread-box" style="left:170px; top:180px;">Thread 2</div>
+            <div class="thread-box" style="left:170px; top:120px;">Thread 1</div>
+            <div class="thread-box" style="left:170px; top:200px;">Thread 2</div>
 
             <!-- DB à direita -->
             <div class="database">DB</div>
@@ -479,6 +481,7 @@
       blocked: 0,
       startTime: 0,
       endTime: 0,
+      endTimeSet: false,
       intervalId: null,
       animationsInProgress: 0,
       isPaused: false,
@@ -490,6 +493,7 @@
       available: 2,
       startTime: 0,
       endTime: 0,
+      endTimeSet: false,
       intervalId: null, 
       animationsInProgress: 0,
       isPaused: false,
@@ -643,24 +647,21 @@
     const timer = document.getElementById(`${type}-timer`);
     timer.textContent = `${elapsed.toFixed(1)}s`;
     
-    // Se todas as requisições concluídas e não há mais animações em andamento, parar timer
-    if (animation[type].completed === 3 && animation[type].animationsInProgress === 0) {
-      clearInterval(animation[type].intervalId);
+    // Se todas as requisições concluídas e não há mais animações em andamento, registrar tempo e reiniciar
+    if (animation[type].completed === 3 && animation[type].animationsInProgress === 0 && !animation[type].endTimeSet) {
+      // Marcar que já registramos o tempo final para evitar múltiplas chamadas
+      animation[type].endTimeSet = true;
       animation[type].endTime = Date.now();
       const totalTime = ((animation[type].endTime - animation[type].startTime) / 1000).toFixed(1);
       document.getElementById(`${type}-time`).textContent = `${type === 'sync' ? 'Síncrono' : 'Assíncrono'}: ${totalTime}s`;
       
-      if (type === 'sync' && animation.async.completed === 3 && animation.async.endTime > 0) {
-        // Ambos completaram, habilitar o botão de play
-        elements.playBoth.disabled = false;
-        elements.playBoth.textContent = '▶️ Play';
-        elements.pauseBoth.disabled = true;
-      } else if (type === 'async' && animation.sync.completed === 3 && animation.sync.endTime > 0) {
-        // Ambos completaram, habilitar o botão de play
-        elements.playBoth.disabled = false;
-        elements.playBoth.textContent = '▶️ Play';
-        elements.pauseBoth.disabled = true;
-      }
+      // Reiniciar automaticamente após pequena pausa
+      setTimeout(() => {
+        if (!animation[type].isPaused) {
+          resetAnimation(type);
+          startAnimation(type);
+        }
+      }, 3000);
     }
   }
 
@@ -742,6 +743,7 @@
     animation[type].animationsInProgress = 0;
     animation[type].isPaused = false;
     animation[type].pausedAnimations = [];
+    animation[type].endTimeSet = false;
     
     if (type === 'sync') {
       animation.sync.blocked = 0;
@@ -801,9 +803,9 @@
 
     // Posições iniciais das setinhas (3 clientes)
     const requests = [
-      { x: 50, y: 65, color: '#d9534f', clientIndex: 0, id: 1 },
-      { x: 50, y: 145, color: '#5bc0de', clientIndex: 1, id: 2 },
-      { x: 50, y: 225, color: '#5cb85c', clientIndex: 2, id: 3 }
+      { x: 50, y: 75, color: '#d9534f', clientIndex: 0, id: 1 },
+      { x: 50, y: 165, color: '#5bc0de', clientIndex: 1, id: 2 },
+      { x: 50, y: 255, color: '#5cb85c', clientIndex: 2, id: 3 }
     ];
     
     // Free threads pool
@@ -893,8 +895,14 @@
                     const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
                     const waitingIndex = requests.findIndex(r => r.id === waitingId);
                     startRequest(waitingIndex);
-                  } else if (threadPool.length === 2) {
+                  } else if (threadPool.length === 2 && animation.sync.completed === 3) {
+                    // Destacar a mensagem de conclusão
                     statusIndicator.textContent = 'Todas as requisições processadas';
+                    statusIndicator.style.fontWeight = 'bold';
+                    statusIndicator.style.color = '#007bff';
+                    statusIndicator.style.fontSize = '16px';
+                    statusIndicator.style.backgroundColor = 'rgba(232, 244, 255, 0.8)';
+                    statusIndicator.style.border = '1px solid #b8daff';
                   }
                 }, 'sync');
               }, 'sync');
@@ -1081,7 +1089,13 @@
                           const waitingIndex = requests.findIndex(r => r.id === waitingId);
                           startRequest(waitingIndex);
                         } else if (animation.async.completed === 3) {
+                          // Destacar a mensagem de conclusão
                           statusIndicator.textContent = 'Todas as requisições processadas';
+                          statusIndicator.style.fontWeight = 'bold';
+                          statusIndicator.style.color = '#007bff';
+                          statusIndicator.style.fontSize = '16px';
+                          statusIndicator.style.backgroundColor = 'rgba(232, 244, 255, 0.8)';
+                          statusIndicator.style.border = '1px solid #b8daff';
                         }
                       }, 'async');
                     }, animation.async.isPaused ? 0 : 300);
