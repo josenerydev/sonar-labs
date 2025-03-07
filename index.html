@@ -25,17 +25,25 @@
     }
     .diagram-container {
       display: flex;
-      justify-content: space-evenly;
-      flex-wrap: wrap;
-      max-width: 1000px;
+      justify-content: center;
+      flex-wrap: nowrap;
+      max-width: 1200px;
       margin: 0 auto;
+      position: relative;
+    }
+    
+    @media (max-width: 960px) {
+      .diagram-container {
+        flex-direction: column;
+        align-items: center;
+      }
     }
     .section {
       background: #fff;
       border: 1px solid #ddd;
       border-radius: 5px;
       width: 460px;
-      margin: 10px;
+      margin: 0 5px;
       padding: 10px;
       position: relative;
     }
@@ -306,23 +314,56 @@
       min-width: 30px;
     }
     
-    /* Botões unificados */
-    .unified-controls {
-      text-align: center;
-      margin: 15px auto;
-      padding: 10px;
-      background: #fff;
+    /* Botões unificados ao centro */
+    .central-controls {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 140px;
       border: 1px solid #ddd;
-      border-radius: 5px;
-      max-width: 600px;
     }
     
-    /* Botões individuais */
-    .controls {
-      text-align: center;
+    .central-controls button {
+      margin: 5px 0;
+      width: 120px;
+    }
+    
+    .central-controls .timer-display {
       margin-top: 10px;
-      display: flex;
-      justify-content: center;
+      text-align: center;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    
+    @media (max-width: 960px) {
+      .central-controls {
+        position: static;
+        transform: none;
+        margin: 10px auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: 90%;
+        max-width: 460px;
+      }
+      
+      .central-controls button {
+        margin: 5px;
+      }
+    }
+    
+    /* Botões individuais (removidos) */
+    .controls {
+      display: none;
     }
     button {
       margin: 0 5px;
@@ -415,15 +456,7 @@
   sejam processadas mesmo com apenas 2 threads disponíveis.
 </div>
 
-<div class="unified-controls">
-  <button id="start-both" class="primary">▶️ Iniciar Comparação</button>
-  <button id="reset-both" class="secondary">🔄 Reiniciar</button>
-  <div style="margin-top: 10px; font-weight: bold;">
-    Tempo de processamento total:
-    <span id="sync-time" style="margin-right: 15px; color: #dc3545;">Síncrono: --</span>
-    <span id="async-time" style="color: #28a745;">Assíncrono: --</span>
-  </div>
-</div>
+
 
 <div class="diagram-container">
 
@@ -464,10 +497,16 @@
       <div class="counter">Requisições Concluídas: <span id="sync-completed">0</span>/3</div>
       <div class="counter">Threads Bloqueadas: <span id="sync-blocked">0</span>/2</div>
     </div>
-    <div class="controls">
-      <button id="sync-play" class="play-pause">▶️ Play</button>
-      <button id="sync-pause" class="play-pause" disabled>⏸️ Pause</button>
-      <button id="sync-reset">🔄 Reset</button>
+  </div>
+  
+  <!-- Controles Centrais -->
+  <div class="central-controls">
+    <button id="play-both" class="primary">▶️ Play</button>
+    <button id="pause-both" class="secondary" disabled>⏸️ Pause</button>
+    <button id="reset-both" class="secondary">🔄 Reset</button>
+    <div class="timer-display">
+      <div id="sync-time" style="color: #dc3545;">Sinc: --</div>
+      <div id="async-time" style="color: #28a745;">Async: --</div>
     </div>
   </div>
 
@@ -507,11 +546,6 @@
     <div class="metrics">
       <div class="counter">Requisições Concluídas: <span id="async-completed">0</span>/3</div>
       <div class="counter">Threads Disponíveis: <span id="async-available">2</span>/2</div>
-    </div>
-    <div class="controls">
-      <button id="async-play" class="play-pause">▶️ Play</button>
-      <button id="async-pause" class="play-pause" disabled>⏸️ Pause</button>
-      <button id="async-reset">🔄 Reset</button>
     </div>
   </div>
 
@@ -585,25 +619,15 @@
     asyncTimer: document.getElementById('async-timer'),
     syncTime: document.getElementById('sync-time'),
     asyncTime: document.getElementById('async-time'),
-    syncPlay: document.getElementById('sync-play'),
-    syncPause: document.getElementById('sync-pause'),
-    syncReset: document.getElementById('sync-reset'),
-    asyncPlay: document.getElementById('async-play'),
-    asyncPause: document.getElementById('async-pause'),
-    asyncReset: document.getElementById('async-reset'),
-    startBoth: document.getElementById('start-both'),
+    playBoth: document.getElementById('play-both'),
+    pauseBoth: document.getElementById('pause-both'),
     resetBoth: document.getElementById('reset-both')
   };
 
-  // Event listeners
-  elements.syncPlay.addEventListener('click', () => startAnimation('sync'));
-  elements.syncPause.addEventListener('click', () => pauseAnimation('sync'));
-  elements.syncReset.addEventListener('click', () => resetAnimation('sync'));
-  elements.asyncPlay.addEventListener('click', () => startAnimation('async'));
-  elements.asyncPause.addEventListener('click', () => pauseAnimation('async'));
-  elements.asyncReset.addEventListener('click', () => resetAnimation('async'));
-  elements.startBoth.addEventListener('click', startBothAnimations);
-  elements.resetBoth.addEventListener('click', resetBothAnimations);
+  // Event listeners para os controles centrais
+  document.getElementById('play-both').addEventListener('click', startBothAnimations);
+  document.getElementById('pause-both').addEventListener('click', pauseBothAnimations);
+  document.getElementById('reset-both').addEventListener('click', resetBothAnimations);
 
   // Função utilitária para criar uma setinha (requisição)
   function createArrow(diagramId, x, y, text, color) {
@@ -756,10 +780,6 @@
     animation[type].startTime = Date.now();
     animation[type].intervalId = setInterval(() => updateTimer(type), 100);
     
-    // Atualizar botões
-    elements[`${type}Play`].disabled = true;
-    elements[`${type}Pause`].disabled = false;
-    
     // Iniciar fluxo apropriado
     if (type === 'sync') {
       startSync();
@@ -771,11 +791,16 @@
   // Pausar animação
   function pauseAnimation(type) {
     if (!animation[type].running) return;
-    
     animation[type].isPaused = true;
-    elements[`${type}Play`].disabled = false;
-    elements[`${type}Play`].textContent = '▶️ Continuar';
-    elements[`${type}Pause`].disabled = true;
+  }
+  
+  // Pausar ambas animações
+  function pauseBothAnimations() {
+    pauseAnimation('sync');
+    pauseAnimation('async');
+    elements.pauseBoth.disabled = true;
+    elements.playBoth.disabled = false;
+    elements.playBoth.textContent = '▶️ Continuar';
   }
   
   // Resumir animação
@@ -783,8 +808,6 @@
     if (!animation[type].running || !animation[type].isPaused) return;
     
     animation[type].isPaused = false;
-    elements[`${type}Play`].disabled = true;
-    elements[`${type}Pause`].disabled = false;
     
     // Retomar animações pausadas
     const pausedAnimations = animation[type].pausedAnimations;
@@ -829,25 +852,35 @@
     
     // Resetar timer
     document.getElementById(`${type}-timer`).textContent = '0.0s';
-    
-    // Resetar botões
-    elements[`${type}Play`].disabled = false;
-    elements[`${type}Play`].textContent = '▶️ Play';
-    elements[`${type}Pause`].disabled = true;
   }
   
   // Iniciar ambas animações
   function startBothAnimations() {
+    if (animation.sync.isPaused || animation.async.isPaused) {
+      // Se estiver pausado, continuar
+      resumeAnimation('sync');
+      resumeAnimation('async');
+      elements.playBoth.disabled = true;
+      elements.pauseBoth.disabled = false;
+      return;
+    }
+    
     startAnimation('sync');
     startAnimation('async');
+    
+    elements.playBoth.disabled = true;
+    elements.pauseBoth.disabled = false;
   }
   
   // Resetar ambas animações
   function resetBothAnimations() {
     resetAnimation('sync');
     resetAnimation('async');
-    elements.syncTime.textContent = 'Síncrono: --';
-    elements.asyncTime.textContent = 'Assíncrono: --';
+    elements.syncTime.textContent = 'Sinc: --';
+    elements.asyncTime.textContent = 'Async: --';
+    elements.playBoth.disabled = false;
+    elements.playBoth.textContent = '▶️ Play';
+    elements.pauseBoth.disabled = true;
   }
 
   /* ======================================
