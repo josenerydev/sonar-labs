@@ -17,6 +17,60 @@
       margin-bottom: 20px;
     }
     
+    /* Event Log Styles */
+    .event-log {
+      position: absolute;
+      top: 50px;
+      right: 10px;
+      width: 210px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 0;
+      z-index: 10;
+      max-height: 250px;
+      overflow-y: auto;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .event-log-header {
+      font-weight: bold;
+      font-size: 12px;
+      padding: 5px;
+      background: #f0f0f0;
+      border-bottom: 1px solid #ddd;
+      border-radius: 5px 5px 0 0;
+      text-align: center;
+    }
+    
+    .event-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    
+    .event-list li {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-bottom: 1px solid #eee;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .event-list li:nth-child(odd) {
+      background-color: #f9f9f9;
+    }
+    
+    .event-list li.event-request { color: #0275d8; }
+    .event-list li.event-thread { color: #5cb85c; }
+    .event-list li.event-db { color: #f0ad4e; }
+    .event-list li.event-complete { color: #5bc0de; }
+    .event-list li.event-wait { color: #d9534f; }
+    
     /* BOUNDARIES - dotted boxes to represent process limits */
     .client-process {
       width: 110px;
@@ -379,6 +433,12 @@
             <!-- Timer -->
             <div class="timer" id="sync-timer">0.0s</div>
             
+            <!-- Lista de eventos recentes -->
+            <div class="event-log">
+              <div class="event-log-header">Eventos Recentes (Sync)</div>
+              <ul id="sync-events" class="event-list"></ul>
+            </div>
+            
             <!-- Status Indicator -->
             <div class="status-indicator">Pronto para iniciar</div>
           </div>
@@ -427,6 +487,12 @@
             
             <!-- Timer -->
             <div class="timer" id="async-timer">0.0s</div>
+            
+            <!-- Lista de eventos recentes -->
+            <div class="event-log">
+              <div class="event-log-header">Eventos Recentes (Async)</div>
+              <ul id="async-events" class="event-list"></ul>
+            </div>
             
             <!-- Status Indicator -->
             <div class="status-indicator">Pronto para iniciar</div>
@@ -519,6 +585,33 @@
   // Ativar logs para debug
   const DEBUG = true;
   console.log = DEBUG ? console.log.bind(console) : function(){};
+  
+  // Função para adicionar eventos à lista
+  function addEvent(type, message, category = '') {
+    // Limitar a 10 eventos mais recentes
+    const eventList = document.getElementById(`${type}-events`);
+    if (!eventList) return;
+    
+    // Criar novo item de evento
+    const eventItem = document.createElement('li');
+    eventItem.textContent = message;
+    
+    // Adicionar classe para estilo
+    if (category) {
+      eventItem.classList.add(`event-${category}`);
+    }
+    
+    // Adicionar ao início da lista (mais recente primeiro)
+    eventList.insertBefore(eventItem, eventList.firstChild);
+    
+    // Manter apenas os 10 mais recentes
+    while (eventList.children.length > 10) {
+      eventList.removeChild(eventList.lastChild);
+    }
+    
+    // Log no console também
+    console.log(`[${type.toUpperCase()}] ${message}`);
+  }
 
   // Estado global de animação
   const animation = {
@@ -760,7 +853,7 @@
     animation[type].startTime = Date.now();
     animation[type].intervalId = setInterval(() => updateTimer(type), 100);
     
-    console.log(`[${type.toUpperCase()}] Starting animation`);
+    addEvent(type, `Iniciando animação ${type === 'sync' ? 'síncrona' : 'assíncrona'}`, 'thread');
     
     // Iniciar fluxo apropriado
     if (type === 'sync') {
@@ -819,6 +912,14 @@
     
     // Limpar setas
     clearArrows(document.getElementById(`${type}-diagram`));
+    
+    // Limpar a lista de eventos
+    const eventList = document.getElementById(`${type}-events`);
+    if (eventList) {
+      while (eventList.firstChild) {
+        eventList.removeChild(eventList.firstChild);
+      }
+    }
     
     // Resetar estado
     animation[type].running = false;
@@ -927,7 +1028,7 @@
       requestBadge.textContent = request.id;
       arrow.appendChild(requestBadge);
       
-      console.log(`[SYNC] Request ${request.id} started, available threads: ${threadPoolRef.pool.length}`);
+      addEvent('sync', `Req ${request.id} iniciada, threads: ${threadPoolRef.pool.length}`, 'request');
       
       // Check if a thread is available
       if (threadPoolRef.pool.length > 0) {
@@ -952,10 +1053,12 @@
           
           // Thread processing - mark thread as assigned
           statusIndicator.textContent = `Thread ${threadNumber} processando requisição ${request.id}`;
+          addEvent('sync', `Thread ${threadNumber} processando req ${request.id}`, 'thread');
           
           // Thread -> DB (Thread is blocked during this operation)
           if (threadElem && document.body.contains(threadElem)) {
             threadElem.classList.add('thread-blocked'); // Mark thread as blocked
+            addEvent('sync', `Thread ${threadNumber} bloqueada`, 'wait');
           }
           
           moveElement(arrow, threadPos.x, threadPos.y, 350, threadPos.y, 700, () => {
@@ -963,6 +1066,7 @@
             
             // "Bloqueado" por 2s no DB
             statusIndicator.textContent = `Thread ${threadNumber} BLOQUEADA aguardando DB (SYNC, bloqueia thread)`;
+            addEvent('sync', `Aguardando DB por 2s (Thread ${threadNumber} bloqueada)`, 'db');
             
             // Timeout para simular operação de I/O
             setTimeout(() => {
@@ -970,6 +1074,7 @@
               
               // Return DB -> Thread
               statusIndicator.textContent = `Banco de dados respondeu para requisição ${request.id}`;
+              addEvent('sync', `DB respondeu para req ${request.id}`, 'db');
               if (arrow && document.body.contains(arrow)) {
                 arrow.classList.add('return');
                 moveElement(arrow, 350, threadPos.y, threadPos.x, threadPos.y, 700, () => {
@@ -992,7 +1097,7 @@
                     animation.sync.available = threadPoolRef.pool.length;
                     updateCounters('sync');
                     
-                    console.log(`[SYNC] Request ${request.id} completed, threads returned to pool: ${threadPoolRef.pool.length}`);
+                    addEvent('sync', `Req ${request.id} completa, thread ${threadNumber} liberada`, 'complete');
                     
                     statusIndicator.textContent = `Thread ${threadNumber} liberada, voltou para o pool`;
                     
@@ -1019,7 +1124,7 @@
         const clients = diagram.querySelectorAll('.client-box');
         clients[request.clientIndex].classList.add('waiting');
         statusIndicator.textContent = `Requisição ${request.id} AGUARDANDO thread disponível (pool esgotado)`;
-        console.log(`[SYNC] Request ${request.id} waiting for thread, no threads available`);
+        addEvent('sync', `Req ${request.id} espera por thread (pool vazio)`, 'wait');
       }
     }
   }
@@ -1070,7 +1175,7 @@
       requestBadge.textContent = request.id;
       arrow.appendChild(requestBadge);
       
-      console.log(`[ASYNC] Request ${request.id} started, available threads: ${threadPoolRef.pool.length}`);
+      addEvent('async', `Req ${request.id} iniciada, threads: ${threadPoolRef.pool.length}`, 'request');
       
       // Check if a thread is available
       if (threadPoolRef.pool.length > 0) {
@@ -1095,6 +1200,7 @@
           
           // Thread processing - brief CPU work
           statusIndicator.textContent = `Thread ${threadNumber} processando requisição ${request.id} (setup)`;
+          addEvent('async', `Thread ${threadNumber} processando req ${request.id}`, 'thread');
           
           // Quick thread work (async setup)
           setTimeout(() => {
@@ -1111,7 +1217,7 @@
             animation.async.available = threadPoolRef.pool.length;
             updateCounters('async');
             
-            console.log(`[ASYNC] Thread ${threadNumber} returned to pool at await, now available: ${threadPoolRef.pool.length}`);
+            addEvent('async', `Thread ${threadNumber} liberada no await`, 'thread');
             
             // Check if there are waiting clients and process them
             const waitingClients = diagram.querySelectorAll('.client-box.waiting');
@@ -1137,6 +1243,7 @@
               
               // I/O operation in DB
               statusIndicator.textContent = `Requisição ${request.id} executando no banco de dados (I/O assíncrono)`;
+              addEvent('async', `Req ${request.id} executando no DB por 2s`, 'db');
               
               // Timeout para simular operação de I/O - same time as sync for comparison
               setTimeout(() => {
@@ -1181,6 +1288,7 @@
                   
                   // Response DB -> Thread
                   statusIndicator.textContent = `Banco respondeu! Req. ${request.id} obtém Thread ${returnThreadNumber} (pode ser diferente)`;
+                  addEvent('async', `DB respondeu para req ${request.id}`, 'db');
                   
                   if (arrow && document.body.contains(arrow)) {
                     arrow.classList.add('return');
@@ -1208,7 +1316,7 @@
                           animation.async.available = threadPoolRef.pool.length;
                           updateCounters('async');
                           
-                          console.log(`[ASYNC] Request ${request.id} completed, thread ${returnThreadNumber} returned to pool, available: ${threadPoolRef.pool.length}`);
+                          addEvent('async', `Req ${request.id} completa, thread ${returnThreadNumber} liberada`, 'complete');
                           
                           statusIndicator.textContent = `Thread ${returnThreadNumber} liberada, voltou para o pool`;
                           
@@ -1238,7 +1346,7 @@
         const clients = diagram.querySelectorAll('.client-box');
         clients[request.clientIndex].classList.add('waiting');
         statusIndicator.textContent = `Requisição ${request.id} AGUARDANDO thread disponível (pool esgotado)`;
-        console.log(`[ASYNC] Request ${request.id} waiting, no threads available`);
+        addEvent('async', `Req ${request.id} espera por thread (pool vazio)`, 'wait');
       }
     }
   }
