@@ -150,6 +150,7 @@
       font-weight: bold;
       font-size: 13px;
       z-index: 2;
+      padding-left: 16px; /* Espaço para o ícone */
     }
     .client-box::before {
       content: "🌐";
@@ -309,18 +310,6 @@
       border-top: 1px solid #eee;
     }
     
-    /* Temporizador */
-    .timer {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 5px 10px;
-      background: rgba(0,0,0,0.1);
-      border-radius: 15px;
-      font-size: 14px;
-      font-weight: bold;
-    }
-    
     /* Compare indicator */
     .comparison-indicator {
       text-align: center;
@@ -342,6 +331,58 @@
       margin-right: 8px;
       border-radius: 3px;
       position: relative;
+    }
+
+    /* Melhoria de responsividade */
+    @media (max-width: 768px) {
+      .diagram {
+        height: 450px;
+      }
+      
+      .event-list-card {
+        max-height: 150px;
+      }
+      
+      .client-process, .server-process, .db-process {
+        transform: scale(0.9);
+        transform-origin: center;
+      }
+    }
+
+    /* Melhor centralização */
+    .metrics-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 10px;
+    }
+    
+    .metrics-item {
+      text-align: center;
+      padding: 5px 10px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+      border: 1px solid #dee2e6;
+    }
+    
+    .badge {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 4px 8px;
+      background-color: #6c757d;
+    }
+    
+    .controls-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      min-width: 120px;
     }
   </style>
 </head>
@@ -366,15 +407,14 @@
   <div class="row mb-4">
     <div class="col-12">
       <div class="card">
-        <div class="card-body d-flex flex-column align-items-center">
-          <div class="d-flex gap-2 mb-2">
+        <div class="card-body">
+          <div class="controls-container">
             <button id="play-both" class="btn btn-primary">▶️ Iniciar Comparação</button>
             <button id="pause-both" class="btn btn-secondary" disabled>⏸️ Pausar</button>
             <button id="reset-both" class="btn btn-outline-secondary">🔄 Reiniciar</button>
           </div>
-          <div class="d-flex gap-4 mt-2">
-            <div id="sync-time" class="badge bg-danger">Síncrono: --</div>
-            <div id="async-time" class="badge bg-success">Assíncrono: --</div>
+          <div class="mt-3 text-center">
+            <div id="global-timer" class="badge bg-dark p-2 fs-6">Tempo: 0s</div>
           </div>
         </div>
       </div>
@@ -417,16 +457,13 @@
             <!-- DB à direita -->
             <div class="database">DB</div>
             
-            <!-- Timer -->
-            <div class="timer" id="sync-timer">0.0s</div>
-            
             <!-- Status Indicator -->
             <div class="status-indicator">Pronto para iniciar</div>
           </div>
           <div class="d-flex justify-content-around mt-2">
-            <div>Requisições Completas: <span id="sync-completed" class="badge bg-primary">0</span>/3</div>
-            <div>Threads Disponíveis: <span id="sync-available" class="badge bg-success">2</span>/2</div>
-            <div>Threads Bloqueadas: <span id="sync-blocked" class="badge bg-danger">0</span>/2</div>
+            <div>Requisições Completas: <span id="sync-completed" class="badge">0</span></div>
+            <div>Threads Disponíveis: <span id="sync-available" class="badge">2</span>/2</div>
+            <div>Threads Bloqueadas: <span id="sync-blocked" class="badge">0</span>/2</div>
           </div>
         </div>
       </div>
@@ -466,16 +503,13 @@
             <!-- DB à direita -->
             <div class="database">DB</div>
             
-            <!-- Timer -->
-            <div class="timer" id="async-timer">0.0s</div>
-            
             <!-- Status Indicator -->
             <div class="status-indicator">Pronto para iniciar</div>
           </div>
           <div class="d-flex justify-content-around mt-2">
-            <div>Requisições Completas: <span id="async-completed" class="badge bg-primary">0</span>/3</div>
-            <div>Threads Disponíveis: <span id="async-available" class="badge bg-success">2</span>/2</div>
-            <div>Threads Bloqueadas: <span id="async-blocked" class="badge bg-danger">0</span>/2</div>
+            <div>Requisições Completas: <span id="async-completed" class="badge">0</span></div>
+            <div>Threads Disponíveis: <span id="async-available" class="badge">2</span>/2</div>
+            <div>Threads Bloqueadas: <span id="async-blocked" class="badge">0</span>/2</div>
           </div>
         </div>
       </div>
@@ -514,31 +548,31 @@
     <div class="col-12">
       <div class="card">
         <div class="card-body">
-          <div class="d-flex flex-wrap">
+          <div class="d-flex flex-wrap justify-content-center">
             <div class="legend-item">
-              <div class="legend-color" style="background: #cfe2ff; border: 2px solid #6ea8fe; position: relative;">
-                <span style="position: absolute; left: 1px; top: -1px; font-size: 14px;">🌐</span>
+              <div class="legend-color d-flex align-items-center justify-content-center" style="background: #cfe2ff; border: 2px solid #6ea8fe; position: relative;">
+                <span style="font-size: 14px;">🌐</span>
               </div>
               <span>Requisição Web</span>
             </div>
             <div class="legend-item">
-              <div class="legend-color" style="background: #e3f9e3; border: 2px solid #5cb85c; position: relative;">
-                <span style="position: absolute; left: 1px; top: -1px; font-size: 12px;">⚙️</span>
+              <div class="legend-color d-flex align-items-center justify-content-center" style="background: #e3f9e3; border: 2px solid #5cb85c; position: relative;">
+                <span style="font-size: 12px;">⚙️</span>
               </div>
               <span>Thread Disponível</span>
             </div>
             <div class="legend-item">
-              <div class="legend-color" style="background: #ffcccc; border: 2px solid #dc3545; position: relative;">
-                <span style="position: absolute; right: 1px; top: -1px; font-size: 12px;">🔒</span>
+              <div class="legend-color d-flex align-items-center justify-content-center" style="background: #ffcccc; border: 2px solid #dc3545; position: relative;">
+                <span style="font-size: 12px;">🔒</span>
               </div>
               <span>Thread Bloqueada</span>
             </div>
             <div class="legend-item">
-              <div class="legend-color" style="background: #f0fff0; border: 2px dashed #5cb85c;"></div>
+              <div class="legend-color d-flex align-items-center justify-content-center" style="background: #f0fff0; border: 2px dashed #5cb85c;"></div>
               <span>Thread Pool</span>
             </div>
             <div class="legend-item">
-              <div class="legend-color" style="background: #fdf6ea; border: 2px solid #f0ad4e;"></div>
+              <div class="legend-color d-flex align-items-center justify-content-center" style="background: #fdf6ea; border: 2px solid #f0ad4e;"></div>
               <span>Banco de Dados</span>
             </div>
           </div>
@@ -628,6 +662,10 @@
 
   // Estado global de animação
   const animation = {
+    globalStartTime: 0,
+    globalTimerIntervalId: null,
+    globalTotalPauseTime: 0,
+    globalPauseStartTime: 0,
     sync: {
       running: false,
       completed: 0,
@@ -636,12 +674,11 @@
       startTime: 0,
       pauseStartTime: 0,
       totalPauseTime: 0,
-      endTime: 0,
-      endTimeSet: false,
       intervalId: null,
       animationsInProgress: 0,
       isPaused: false,
-      pausedAnimations: []
+      pausedAnimations: [],
+      totalRequests: 0
     },
     async: {
       running: false,
@@ -651,12 +688,11 @@
       startTime: 0,
       pauseStartTime: 0,
       totalPauseTime: 0,
-      endTime: 0,
-      endTimeSet: false,
       intervalId: null, 
       animationsInProgress: 0,
       isPaused: false,
-      pausedAnimations: []
+      pausedAnimations: [],
+      totalRequests: 0
     }
   };
 
@@ -670,13 +706,12 @@
     syncAvailable: document.getElementById('sync-available'),
     asyncBlocked: document.getElementById('async-blocked'),
     asyncAvailable: document.getElementById('async-available'),
-    syncTimer: document.getElementById('sync-timer'),
-    asyncTimer: document.getElementById('async-timer'),
-    syncTime: document.getElementById('sync-time'),
-    asyncTime: document.getElementById('async-time'),
     playBoth: document.getElementById('play-both'),
     pauseBoth: document.getElementById('pause-both'),
-    resetBoth: document.getElementById('reset-both')
+    resetBoth: document.getElementById('reset-both'),
+    globalTimer: document.getElementById('global-timer'),
+    syncRequestsPerSecond: document.getElementById('sync-requests-per-second'),
+    asyncRequestsPerSecond: document.getElementById('async-requests-per-second')
   };
 
   // Event listeners para os controles centrais
@@ -866,60 +901,6 @@
     }
   }
 
-  // Atualizar timer
-  function updateTimer(type) {
-    if (!animation[type].running) return;
-    
-    let elapsed;
-    
-    if (animation[type].isPaused) {
-      // Se estiver pausado, usa o tempo até o início da pausa
-      elapsed = (animation[type].pauseStartTime - animation[type].startTime - animation[type].totalPauseTime) / 1000;
-    } else {
-      // Senão, usa o tempo atual menos o tempo total de pausa
-      elapsed = (Date.now() - animation[type].startTime - animation[type].totalPauseTime) / 1000;
-    }
-    
-    const timer = document.getElementById(`${type}-timer`);
-    timer.textContent = `${elapsed.toFixed(1)}s`;
-    
-    // Log para debug
-    if (DEBUG && Math.floor(elapsed) % 2 === 0 && elapsed % 1 < 0.1) {
-      console.log(`[${type.toUpperCase()}] Elapsed: ${elapsed.toFixed(1)}s, Completed: ${animation[type].completed}/3`);
-    }
-    
-    // Se todas as requisições concluídas e não há mais animações em andamento, registrar tempo e reiniciar
-    if (animation[type].completed === 3 && animation[type].animationsInProgress === 0 && !animation[type].endTimeSet) {
-      // Marcar que já registramos o tempo final para evitar múltiplas chamadas
-      animation[type].endTimeSet = true;
-      animation[type].endTime = Date.now();
-      const totalTime = ((animation[type].endTime - animation[type].startTime - animation[type].totalPauseTime) / 1000).toFixed(1);
-      document.getElementById(`${type}-time`).textContent = `${type === 'sync' ? 'Síncrono' : 'Assíncrono'}: ${totalTime}s`;
-      
-      // Log de conclusão
-      console.log(`[${type.toUpperCase()}] All requests completed in ${totalTime}s`);
-      
-      // Destacar a mensagem de conclusão
-      const statusIndicator = document.querySelector(`#${type}-diagram .status-indicator`);
-      if (statusIndicator) {
-        statusIndicator.textContent = 'Todas as requisições processadas';
-        statusIndicator.style.fontWeight = 'bold';
-        statusIndicator.style.color = '#007bff';
-        statusIndicator.style.fontSize = '16px';
-        statusIndicator.style.backgroundColor = 'rgba(232, 244, 255, 0.8)';
-        statusIndicator.style.border = '1px solid #b8daff';
-      }
-      
-      // Reiniciar automaticamente após pequena pausa
-      createTimeout(() => {
-        if (!animation[type].isPaused) {
-          resetAnimation(type);
-          startAnimation(type);
-        }
-      }, 5000, type); // Tempo maior para visualizar o estado final
-    }
-  }
-
   // Iniciar animação
   function startAnimation(type) {
     if (animation[type].running && !animation[type].isPaused) return;
@@ -930,16 +911,22 @@
       return;
     }
     
-    // Resetar primeiro
+    // Resetar primeiro (mas manter o contador se já estava em execução)
+    const wasRunningBefore = animation[type].running;
     resetAnimation(type);
     
     // Configurar estado
     animation[type].running = true;
     animation[type].startTime = Date.now();
     animation[type].totalPauseTime = 0;
-    animation[type].intervalId = setInterval(() => updateTimer(type), 100);
     
     addEvent(type, `Iniciando animação ${type === 'sync' ? 'síncrona' : 'assíncrona'}`, 'thread');
+    
+    // Adicionar mensagem de status de contagem
+    const statusIndicator = document.querySelector(`#${type}-diagram .status-indicator`);
+    if (statusIndicator && animation[type].completed > 0) {
+      addEvent(type, `Contagem total: ${animation[type].completed} requisições processadas`, 'complete');
+    }
     
     // Iniciar fluxo apropriado
     if (type === 'sync') {
@@ -968,6 +955,10 @@
   function pauseBothAnimations() {
     pauseAnimation('sync');
     pauseAnimation('async');
+    
+    // Pausar timer global
+    animation.globalPauseStartTime = Date.now();
+    
     elements.pauseBoth.disabled = true;
     elements.playBoth.disabled = false;
     elements.playBoth.textContent = '▶️ Continuar';
@@ -1008,7 +999,7 @@
     });
   }
   
-  // Resetar animação
+  // Resetar animação (sem resetar contadores entre ciclos)
   function resetAnimation(type) {
     console.log(`[${type.toUpperCase()}] Resetting animation`);
     
@@ -1034,13 +1025,12 @@
     
     // Resetar estado
     animation[type].running = false;
-    animation[type].completed = 0;
     animation[type].animationsInProgress = 0;
     animation[type].isPaused = false;
     animation[type].pausedAnimations = [];
-    animation[type].endTimeSet = false;
     animation[type].totalPauseTime = 0;
     
+    // Resetar threads (mas não o contador de requisições)
     if (type === 'sync') {
       animation.sync.blocked = 0;
       animation.sync.available = 2;
@@ -1051,9 +1041,6 @@
     
     // Atualizar contadores
     updateCounters(type);
-    
-    // Resetar timer
-    document.getElementById(`${type}-timer`).textContent = '0.0s';
     
     // Resetar status
     const statusIndicator = document.querySelector(`#${type}-diagram .status-indicator`);
@@ -1067,17 +1054,38 @@
     }
   }
   
+  // Função para atualizar o timer global
+  function updateGlobalTimer() {
+    if (!animation.globalStartTime) return;
+    
+    // Se estiver pausado, não atualizar o tempo
+    if (animation.sync.isPaused || animation.async.isPaused) return;
+    
+    const elapsed = (Date.now() - animation.globalStartTime - animation.globalTotalPauseTime) / 1000;
+    elements.globalTimer.textContent = `Tempo: ${Math.floor(elapsed)}s`;
+  }
+  
   // Iniciar ambas animações
   function startBothAnimations() {
     if (animation.sync.isPaused || animation.async.isPaused) {
       // Se estiver pausado, continuar
       resumeAnimation('sync');
       resumeAnimation('async');
+      
+      // Retomar timer global
+      const pauseDuration = Date.now() - animation.globalPauseStartTime;
+      animation.globalTotalPauseTime += pauseDuration;
+      
       elements.playBoth.disabled = true;
       elements.pauseBoth.disabled = false;
       elements.playBoth.textContent = '▶️ Iniciar Comparação';
       return;
     }
+    
+    // Iniciar timer global
+    animation.globalStartTime = Date.now();
+    animation.globalTotalPauseTime = 0;
+    animation.globalTimerIntervalId = setInterval(updateGlobalTimer, 100);
     
     startAnimation('sync');
     startAnimation('async');
@@ -1086,12 +1094,32 @@
     elements.pauseBoth.disabled = false;
   }
   
-  // Resetar ambas animações
+  // Resetar ambas animações (incluindo contadores de requisições)
   function resetBothAnimations() {
+    // Primeiro resetamos a animação
     resetAnimation('sync');
     resetAnimation('async');
-    elements.syncTime.textContent = 'Síncrono: --';
-    elements.asyncTime.textContent = 'Assíncrono: --';
+    
+    // Parar e resetar timer global
+    clearInterval(animation.globalTimerIntervalId);
+    animation.globalStartTime = 0;
+    animation.globalTotalPauseTime = 0;
+    elements.globalTimer.textContent = 'Tempo: 0s';
+    
+    // Resetar contadores de requisições por segundo
+    elements.syncRequestsPerSecond.textContent = '0';
+    elements.asyncRequestsPerSecond.textContent = '0';
+    
+    // Agora também resetamos os contadores de requisições completadas
+    animation.sync.completed = 0;
+    animation.async.completed = 0;
+    animation.sync.totalRequests = 0;
+    animation.async.totalRequests = 0;
+    
+    // Atualizar contadores na interface
+    updateCounters('sync');
+    updateCounters('async');
+    
     elements.playBoth.disabled = false;
     elements.playBoth.textContent = '▶️ Iniciar Comparação';
     elements.pauseBoth.disabled = true;
@@ -1225,6 +1253,35 @@
                       
                       // Start waiting request after a small delay
                       createTimeout(() => startRequest(waitingIndex), 300, 'sync');
+                    }
+                    
+                    // Continuar processamento em loop - iniciar nova rodada imediatamente
+                    // Iniciar imediatamente novas requisições se todas da rodada atual terminaram
+                    if (animation.sync.completed % 3 === 0 && animation.sync.animationsInProgress === 0) {
+                      // Iniciar novo ciclo sem demora para maximizar processamento
+                      if (!animation.sync.isPaused) {
+                        statusIndicator.textContent = 'Iniciando novo ciclo...';
+                        statusIndicator.style.fontWeight = '';
+                        statusIndicator.style.color = '';
+                        statusIndicator.style.fontSize = '';
+                        statusIndicator.style.backgroundColor = '';
+                        statusIndicator.style.border = '';
+                        
+                        // Limpar setas e estados, mas manter contadores
+                        clearArrows(diagram);
+                        
+                        // Iniciar requisições para ciclo contínuo
+                        const requests = [
+                          { x: 50, y: 75, color: '#d9534f', clientIndex: 0, id: 1 },
+                          { x: 50, y: 165, color: '#5bc0de', clientIndex: 1, id: 2 },
+                          { x: 50, y: 255, color: '#5cb85c', clientIndex: 2, id: 3 }
+                        ];
+                        
+                        // Iniciar novas requisições em paralelo (sem esperar)
+                        startRequest(0);
+                        createTimeout(() => startRequest(1), 100, 'sync');
+                        createTimeout(() => startRequest(2), 200, 'sync');
+                      }
                     }
                   }, 'sync');
                 }, 'sync');
@@ -1444,6 +1501,35 @@
                             
                             // Start waiting request after a small delay
                             createTimeout(() => startRequest(waitingIndex), 300, 'async');
+                          }
+                          
+                          // Continuar processamento em loop - iniciar nova rodada imediatamente
+                          // Iniciar imediatamente novas requisições se todas da rodada atual terminaram
+                          if (animation.async.completed % 3 === 0 && animation.async.animationsInProgress === 0) {
+                            // Iniciar novo ciclo sem demora para maximizar processamento
+                            if (!animation.async.isPaused) {
+                              statusIndicator.textContent = 'Iniciando novo ciclo...';
+                              statusIndicator.style.fontWeight = '';
+                              statusIndicator.style.color = '';
+                              statusIndicator.style.fontSize = '';
+                              statusIndicator.style.backgroundColor = '';
+                              statusIndicator.style.border = '';
+                              
+                              // Limpar setas e estados, mas manter contadores
+                              clearArrows(diagram);
+                              
+                              // Iniciar requisições para ciclo contínuo
+                              const requests = [
+                                { x: 50, y: 65, color: '#d9534f', clientIndex: 0, id: 1 },
+                                { x: 50, y: 145, color: '#5bc0de', clientIndex: 1, id: 2 },
+                                { x: 50, y: 225, color: '#5cb85c', clientIndex: 2, id: 3 }
+                              ];
+                              
+                              // Iniciar novas requisições em paralelo (sem esperar)
+                              startRequest(0);
+                              createTimeout(() => startRequest(1), 100, 'async');
+                              createTimeout(() => startRequest(2), 200, 'async');
+                            }
                           }
                         }, 'async');
                       }, 300, 'async');
