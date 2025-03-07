@@ -2,12 +2,12 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Sync vs. Async - 3 Reqs x 2 Threads (Loop + Contadores)</title>
+  <title>Exemplo Didático - Sync vs. Async</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
       background: #f7f7f7;
+      margin: 20px;
     }
     h1 {
       text-align: center;
@@ -15,80 +15,116 @@
     }
     .info {
       max-width: 900px;
-      margin: 0 auto 20px;
+      margin: 0 auto;
       background: #fff;
-      padding: 10px;
+      padding: 15px;
       border: 1px solid #ddd;
       border-radius: 5px;
-    }
-    .controls {
-      text-align: center;
       margin-bottom: 20px;
-    }
-    button {
-      margin: 5px;
-      padding: 8px 14px;
-      border: 1px solid #ccc;
-      background: #eee;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #ddd;
-    }
-    .stats-container {
-      display: flex;
-      justify-content: space-around;
-      max-width: 900px;
-      margin: 0 auto 20px;
-    }
-    .stats-box {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      width: 420px;
-      padding: 10px;
-      text-align: center;
-      margin: 10px;
-    }
-    .stats-box h2 {
-      margin-top: 0;
-    }
-    .stat-line {
-      margin: 5px 0;
-      font-size: 16px;
+      line-height: 1.6;
     }
     .diagram-container {
       display: flex;
-      justify-content: space-around;
+      justify-content: space-evenly;
       flex-wrap: wrap;
+      max-width: 1000px;
+      margin: 0 auto;
     }
     .section {
       background: #fff;
       border: 1px solid #ddd;
       border-radius: 5px;
-      width: 420px;
+      width: 460px;
       margin: 10px;
       padding: 10px;
       position: relative;
     }
-    .section h3 {
+    .section h2 {
       text-align: center;
       margin-top: 0;
+      margin-bottom: 10px;
     }
     .diagram {
       position: relative;
-      width: 400px;
+      width: 440px;
       height: 320px;
       border: 1px dashed #ccc;
       margin: 0 auto;
       overflow: hidden;
+      background: #f9f9f9;
     }
-    /* CLIENTES – quadrados */
+    
+    /* BOUNDARIES - dotted boxes to represent process limits */
+    .client-process {
+      width: 110px;
+      height: 270px;
+      border: 2px dotted #6c757d;
+      border-radius: 8px;
+      background: rgba(108, 117, 125, 0.05);
+      position: absolute;
+      left: 10px;
+      top: 25px;
+    }
+    .client-process-label {
+      position: absolute;
+      top: 5px;
+      left: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #6c757d;
+      background: #f9f9f9;
+      padding: 0 5px;
+    }
+
+    /* SERVER PROCESS - middle */
+    .server-process {
+      width: 160px;
+      height: 270px;
+      border: 2px dotted #5bc0de;
+      border-radius: 8px;
+      background: rgba(91, 192, 222, 0.05);
+      position: absolute;
+      left: 140px;
+      top: 25px;
+    }
+    .server-process-label {
+      position: absolute;
+      top: 5px;
+      left: 180px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #5bc0de;
+      background: #f9f9f9;
+      padding: 0 5px;
+    }
+
+    /* DATABASE PROCESS - right side */
+    .db-process {
+      width: 90px;
+      height: 120px;
+      border: 2px dotted #f0ad4e;
+      border-radius: 8px;
+      background: rgba(240, 173, 78, 0.05);
+      position: absolute;
+      left: 320px;
+      top: 100px;
+    }
+    .db-process-label {
+      position: absolute;
+      top: 80px;
+      left: 335px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #f0ad4e;
+      background: #f9f9f9;
+      padding: 0 5px;
+    }
+
+    /* CLIENTES (3) - quadradinhos à esquerda */
     .client-box {
-      width: 80px; 
+      width: 90px; 
       height: 40px;
-      background: #cfe2ff;
+      background: #cfe2ff;  /* azul claro */
       border: 2px solid #6ea8fe; 
       border-radius: 5px;
       color: #333;
@@ -96,26 +132,46 @@
       line-height: 40px;
       position: absolute;
       font-weight: bold;
+      font-size: 13px;
+      z-index: 2;
+      position: relative;
     }
-    /* THREAD POOL */
+    .client-box::before {
+      content: "🌐";
+      position: absolute;
+      left: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+    }
+
+    /* THREAD POOL (retângulo grande com leve destaque) */
     .thread-pool {
-      width: 100px;
-      height: 180px;
+      width: 120px;
+      height: 160px;
       border: 2px dashed #5cb85c;
       border-radius: 5px;
       background: #f0fff0;
       position: absolute;
+      left: 160px;
+      top: 80px;
+      z-index: 1;
     }
     .thread-pool-label {
       position: absolute;
-      width: 100px;
+      width: 120px;
       text-align: center;
       font-weight: bold;
       color: #5cb85c;
+      left: 160px;
+      top: 60px;
+      font-size: 14px;
+      z-index: 2;
     }
-    /* DUAS THREADS */
+
+    /* THREADS dentro do pool (retângulos) */
     .thread-box {
-      width: 80px; 
+      width: 100px; 
       height: 35px;
       border: 2px solid #5cb85c; 
       background: #e3f9e3;
@@ -125,410 +181,1014 @@
       color: #333;
       position: absolute;
       font-weight: bold;
+      font-size: 13px;
+      z-index: 2;
+      position: relative;
     }
-    /* BANCO DE DADOS */
+    .thread-box::before {
+      content: "⚙️";
+      position: absolute;
+      left: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+    }
+    
+    /* Thread bloqueada */
+    .thread-blocked {
+      background: #ffcccc !important;
+      border-color: #dc3545 !important;
+      color: #dc3545;
+    }
+    .thread-blocked::after {
+      content: "🔒";
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+    }
+
+    /* BANCO DE DADOS (retângulo/cilindro estilizado) */
     .database {
       width: 60px;
       height: 80px;
       border: 2px solid #f0ad4e;
       border-radius: 5px;
-      background: #fdf6ea;
+      background: #fdf6ea; /* Amarelinho */
       color: #f0ad4e;
       text-align: center;
       line-height: 80px;
       font-weight: bold;
       position: absolute;
+      left: 335px;
+      top: 130px;
+      z-index: 2;
     }
-    /* SETAS (DIVs) */
+
+    /* SETAS (requisições) - vamos usar divs pequenas com texto "=>" para simbolizar setinhas em movimento */
     .arrow {
       position: absolute;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: bold;
-      color: #6c757d;
       user-select: none;
       pointer-events: none;
+      z-index: 3;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 0 3px;
+      border-radius: 3px;
     }
+    /* Setas que estão "voltando" (vermelho, p.ex.) */
     .arrow.return {
       color: #d9534f;
+    }
+    
+    /* Request ID badge */
+    .request-id {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      color: white;
+      text-align: center;
+      line-height: 18px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: -10px;
+      margin-left: 15px;
+    }
+
+    /* Visual indicator for request in queue */
+    .waiting {
+      border: 2px dashed #d9534f !important;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    /* Estado das operações */
+    .status-indicator {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      height: 25px;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 3px;
+      text-align: center;
+      line-height: 25px;
+      font-weight: bold;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    /* Contador de requisições */
+    .metrics {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-around;
+      padding: 5px;
+      border-top: 1px solid #eee;
+    }
+    .counter {
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .counter span {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #f0f0f0;
+      border-radius: 3px;
+      min-width: 30px;
+    }
+    
+    /* Botões unificados */
+    .unified-controls {
+      text-align: center;
+      margin: 15px auto;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      max-width: 600px;
+    }
+    
+    /* Botões individuais */
+    .controls {
+      text-align: center;
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+    }
+    button {
+      margin: 0 5px;
+      padding: 8px 14px;
+      border: 1px solid #ccc;
+      background: #eee;
+      border-radius: 3px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #ddd;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    button.play-pause {
+      min-width: 80px;
+    }
+    button.primary {
+      background: #007bff;
+      color: white;
+      border-color: #0069d9;
+    }
+    button.primary:hover {
+      background: #0069d9;
+    }
+    button.secondary {
+      background: #6c757d;
+      color: white;
+      border-color: #5a6268;
+    }
+    button.secondary:hover {
+      background: #5a6268;
+    }
+    
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 15px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px 15px;
+      font-size: 14px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border-radius: 3px;
+    }
+    
+    /* Temporizador */
+    .timer {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      background: rgba(0,0,0,0.1);
+      border-radius: 15px;
+      font-size: 14px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
-<h1>3 Reqs x 2 Threads – Síncrono vs. Assíncrono (Loop + Contadores)</h1>
+<h1>Fluxo Síncrono vs. Assíncrono em ASP.NET Core</h1>
 
 <div class="info">
-  <p>
-    Neste exemplo, três requisições chegam simultaneamente (em intervalos fixos) 
-    em cada cenário: <strong>Síncrono</strong> e <strong>Assíncrono</strong>, 
-    mas o servidor tem apenas <em>2 Threads</em> disponíveis.
-  </p>
-  <p>
-    Observe que, no modo <strong>Síncrono</strong>, se as duas threads 
-    estiverem ocupadas (aguardando o DB por 3s), a terceira requisição 
-    entra numa fila de espera. No modo <strong>Assíncrono</strong>, cada 
-    requisição “libera” a thread assim que o I/O inicia, permitindo que 
-    outra requisição seja atendida imediatamente (a não ser que todas as 
-    threads estejam ocupadas no exato instante).
-  </p>
-  <p>
-    Clique em <strong>Play</strong> para iniciar as duas simulações 
-    simultaneamente. Novas requisições são geradas a cada 2s em cada diagrama. 
-    Acompanhe as estatísticas de quantas requisições foram enviadas, concluídas 
-    e o tempo de execução total. Clique em <strong>Pause</strong> para parar de 
-    gerar novas requisições (as em andamento terminarão).
-  </p>
+  <strong>Cenário:</strong> 2 threads no servidor processando 3 requisições simultâneas.
+  <br><br>
+  <strong>Síncrono:</strong> Cada thread fica "presa" aguardando o banco de dados, não liberando o 
+  <em>Thread Pool</em> para outras requisições. A terceira requisição precisa aguardar até que uma thread seja liberada.
+  <br>
+  <strong>Assíncrono:</strong> Assim que a requisição inicia I/O no DB (com <code>await</code>), 
+  a thread é devolvida ao <em>Thread Pool</em> para tratar outra requisição, permitindo que todas as 3 requisições 
+  sejam processadas mesmo com apenas 2 threads disponíveis.
 </div>
 
-<div class="controls">
-  <button onclick="play()">Play</button>
-  <button onclick="pause()">Pause</button>
-</div>
-
-<div class="stats-container">
-  <div class="stats-box" id="sync-stats">
-    <h2>Síncrono</h2>
-    <div class="stat-line">Tempo (s): <span id="sync-time">0</span></div>
-    <div class="stat-line">Req. Enviadas: <span id="sync-sent">0</span></div>
-    <div class="stat-line">Req. Concluídas: <span id="sync-done">0</span></div>
-  </div>
-  <div class="stats-box" id="async-stats">
-    <h2>Assíncrono</h2>
-    <div class="stat-line">Tempo (s): <span id="async-time">0</span></div>
-    <div class="stat-line">Req. Enviadas: <span id="async-sent">0</span></div>
-    <div class="stat-line">Req. Concluídas: <span id="async-done">0</span></div>
+<div class="unified-controls">
+  <button id="start-both" class="primary">▶️ Iniciar Comparação</button>
+  <button id="reset-both" class="secondary">🔄 Reiniciar</button>
+  <div style="margin-top: 10px; font-weight: bold;">
+    Tempo de processamento total:
+    <span id="sync-time" style="margin-right: 15px; color: #dc3545;">Síncrono: --</span>
+    <span id="async-time" style="color: #28a745;">Assíncrono: --</span>
   </div>
 </div>
 
 <div class="diagram-container">
-  
-  <!-- Diagrama SÍNCRONO -->
+
+  <!-- Seção: SÍNCRONO -->
   <div class="section">
-    <h3>Síncrono (2 Threads, 3 Reqs chegando em loop)</h3>
+    <h2>Síncrono</h2>
     <div class="diagram" id="sync-diagram">
-      <!-- 2 threads no pool -->
-      <div class="thread-pool" style="left:140px; top:60px;"></div>
-      <div class="thread-pool-label" style="left:140px; top:40px;">Thread Pool</div>
+      <!-- Boundaries -->
+      <div class="client-process"></div>
+      <div class="client-process-label">Processo Cliente</div>
+      
+      <div class="server-process"></div>
+      <div class="server-process-label">Processo Servidor</div>
+      
+      <div class="db-process"></div>
+      <div class="db-process-label">Banco de Dados</div>
+      
+      <!-- 3 Clients -->
+      <div class="client-box" style="left:20px; top:50px;">Request 1</div>
+      <div class="client-box" style="left:20px; top:140px;">Request 2</div>
+      <div class="client-box" style="left:20px; top:230px;">Request 3</div>
 
-      <div class="thread-box" style="left:150px; top:80px;">Thread #1</div>
-      <div class="thread-box" style="left:150px; top:140px;">Thread #2</div>
+      <!-- Thread Pool -->
+      <div class="thread-pool"></div>
+      <div class="thread-pool-label">Thread Pool (2)</div>
 
-      <!-- DB -->
-      <div class="database" style="left:310px; top:100px;">DB</div>
+      <!-- 2 Threads dentro do pool -->
+      <div class="thread-box" style="left:170px; top:100px;">Thread 1</div>
+      <div class="thread-box" style="left:170px; top:180px;">Thread 2</div>
+
+      <!-- DB à direita -->
+      <div class="database">DB</div>
+      
+      <!-- Timer -->
+      <div class="timer" id="sync-timer">0.0s</div>
+    </div>
+    <div class="metrics">
+      <div class="counter">Requisições Concluídas: <span id="sync-completed">0</span>/3</div>
+      <div class="counter">Threads Bloqueadas: <span id="sync-blocked">0</span>/2</div>
+    </div>
+    <div class="controls">
+      <button id="sync-play" class="play-pause">▶️ Play</button>
+      <button id="sync-pause" class="play-pause" disabled>⏸️ Pause</button>
+      <button id="sync-reset">🔄 Reset</button>
     </div>
   </div>
 
-  <!-- Diagrama ASSÍNCRONO -->
+  <!-- Seção: ASSÍNCRONO -->
   <div class="section">
-    <h3>Assíncrono (2 Threads, 3 Reqs chegando em loop)</h3>
+    <h2>Assíncrono</h2>
     <div class="diagram" id="async-diagram">
-      <!-- 2 threads no pool -->
-      <div class="thread-pool" style="left:140px; top:60px;"></div>
-      <div class="thread-pool-label" style="left:140px; top:40px;">Thread Pool</div>
+      <!-- Boundaries -->
+      <div class="client-process"></div>
+      <div class="client-process-label">Processo Cliente</div>
+      
+      <div class="server-process"></div>
+      <div class="server-process-label">Processo Servidor</div>
+      
+      <div class="db-process"></div>
+      <div class="db-process-label">Banco de Dados</div>
+      
+      <!-- 3 Clients -->
+      <div class="client-box" style="left:20px; top:50px;">Request 1</div>
+      <div class="client-box" style="left:20px; top:140px;">Request 2</div>
+      <div class="client-box" style="left:20px; top:230px;">Request 3</div>
 
-      <div class="thread-box" style="left:150px; top:80px;">Thread #1</div>
-      <div class="thread-box" style="left:150px; top:140px;">Thread #2</div>
+      <!-- Thread Pool -->
+      <div class="thread-pool"></div>
+      <div class="thread-pool-label">Thread Pool (2)</div>
 
-      <!-- DB -->
-      <div class="database" style="left:310px; top:100px;">DB</div>
+      <!-- 2 Threads dentro do pool -->
+      <div class="thread-box" style="left:170px; top:100px;">Thread 1</div>
+      <div class="thread-box" style="left:170px; top:180px;">Thread 2</div>
+
+      <!-- DB à direita -->
+      <div class="database">DB</div>
+      
+      <!-- Timer -->
+      <div class="timer" id="async-timer">0.0s</div>
+    </div>
+    <div class="metrics">
+      <div class="counter">Requisições Concluídas: <span id="async-completed">0</span>/3</div>
+      <div class="counter">Threads Disponíveis: <span id="async-available">2</span>/2</div>
+    </div>
+    <div class="controls">
+      <button id="async-play" class="play-pause">▶️ Play</button>
+      <button id="async-pause" class="play-pause" disabled>⏸️ Pause</button>
+      <button id="async-reset">🔄 Reset</button>
     </div>
   </div>
 
 </div>
 
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-color" style="background: #cfe2ff; border: 2px solid #6ea8fe; position: relative;">
+      <span style="position: absolute; left: 1px; top: -1px; font-size: 14px;">🌐</span>
+    </div>
+    <span>Requisição Web</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background: #e3f9e3; border: 2px solid #5cb85c; position: relative;">
+      <span style="position: absolute; left: 1px; top: -1px; font-size: 12px;">⚙️</span>
+    </div>
+    <span>Thread Disponível</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background: #ffcccc; border: 2px solid #dc3545; position: relative;">
+      <span style="position: absolute; right: 1px; top: -1px; font-size: 12px;">🔒</span>
+    </div>
+    <span>Thread Bloqueada</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background: #f0fff0; border: 2px dashed #5cb85c;"></div>
+    <span>Thread Pool</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background: #fdf6ea; border: 2px solid #f0ad4e;"></div>
+    <span>Banco de Dados</span>
+  </div>
+</div>
+
 <script>
-  /**************************************************************************
-   * Variáveis de controle geral
-   **************************************************************************/
-  let running = false;         // se estamos rodando ou pausado
-  let startTimeSync = 0;       // marca tempo inicial (ms) do Sync
-  let startTimeAsync = 0;      // marca tempo inicial (ms) do Async
-  let syncTimeInterval = null; // interval para atualizar tempo
-  let asyncTimeInterval = null;
-  let syncSpawnInterval = null; 
-  let asyncSpawnInterval = null;
+  // Estado global de animação
+  const animation = {
+    sync: {
+      running: false,
+      completed: 0,
+      blocked: 0,
+      startTime: 0,
+      endTime: 0,
+      intervalId: null,
+      animationsInProgress: 0,
+      isPaused: false,
+      pausedAnimations: []
+    },
+    async: {
+      running: false,
+      completed: 0,
+      available: 2,
+      startTime: 0,
+      endTime: 0,
+      intervalId: null, 
+      animationsInProgress: 0,
+      isPaused: false,
+      pausedAnimations: []
+    }
+  };
 
-  // Threads livres/ocupadas (Sync e Async)
-  let syncThreads = [true, true]; 
-  let asyncThreads = [true, true];
+  // Selecionar elementos DOM
+  const elements = {
+    syncDiagram: document.getElementById('sync-diagram'),
+    asyncDiagram: document.getElementById('async-diagram'),
+    syncCompleted: document.getElementById('sync-completed'),
+    asyncCompleted: document.getElementById('async-completed'),
+    syncBlocked: document.getElementById('sync-blocked'),
+    asyncAvailable: document.getElementById('async-available'),
+    syncTimer: document.getElementById('sync-timer'),
+    asyncTimer: document.getElementById('async-timer'),
+    syncTime: document.getElementById('sync-time'),
+    asyncTime: document.getElementById('async-time'),
+    syncPlay: document.getElementById('sync-play'),
+    syncPause: document.getElementById('sync-pause'),
+    syncReset: document.getElementById('sync-reset'),
+    asyncPlay: document.getElementById('async-play'),
+    asyncPause: document.getElementById('async-pause'),
+    asyncReset: document.getElementById('async-reset'),
+    startBoth: document.getElementById('start-both'),
+    resetBoth: document.getElementById('reset-both')
+  };
 
-  // Contadores
-  let syncSent = 0;
-  let syncDone = 0;
-  let asyncSent = 0;
-  let asyncDone = 0;
+  // Event listeners
+  elements.syncPlay.addEventListener('click', () => startAnimation('sync'));
+  elements.syncPause.addEventListener('click', () => pauseAnimation('sync'));
+  elements.syncReset.addEventListener('click', () => resetAnimation('sync'));
+  elements.asyncPlay.addEventListener('click', () => startAnimation('async'));
+  elements.asyncPause.addEventListener('click', () => pauseAnimation('async'));
+  elements.asyncReset.addEventListener('click', () => resetAnimation('async'));
+  elements.startBoth.addEventListener('click', startBothAnimations);
+  elements.resetBoth.addEventListener('click', resetBothAnimations);
 
-  // Duração de "I/O no DB" (ms)
-  const DB_DURATION = 3000;
-  // Tempo de CPU rápido para Async (antes de liberar a thread)
-  const CPU_DURATION = 500;
-  // De quanto em quanto tempo geramos 3 requisições "simultâneas"
-  const SPAWN_INTERVAL = 2000;
-
-  /**************************************************************************
-   * Funções utilitárias de animação (setas)
-   **************************************************************************/
+  // Função utilitária para criar uma setinha (requisição)
   function createArrow(diagramId, x, y, text, color) {
-    const diag = document.getElementById(diagramId);
+    const diagram = document.getElementById(diagramId);
     const arrow = document.createElement('div');
     arrow.className = 'arrow';
     arrow.textContent = text || '=>';
     arrow.style.left = x + 'px';
-    arrow.style.top  = y + 'px';
+    arrow.style.top = y + 'px';
     if (color) arrow.style.color = color;
-    diag.appendChild(arrow);
+    diagram.appendChild(arrow);
     return arrow;
   }
 
-  // Move um elemento de (x1,y1) -> (x2,y2) em 'duration' ms
-  function moveElement(elem, x1, y1, x2, y2, duration, callback) {
-    const steps = 30;
-    const interval = duration / steps;
+  // Move "elem" de (x1, y1) para (x2, y2) em 'duration' ms
+  function moveElement(elem, x1, y1, x2, y2, duration, callback, type) {
+    const steps = 40;
     let step = 0;
+    const interval = duration / steps;
     const dx = (x2 - x1) / steps;
     const dy = (y2 - y1) / steps;
 
+    // Incrementar contador de animações em andamento
+    if (type) {
+      animation[type].animationsInProgress++;
+    }
+
+    // Se estiver pausado, salvar para retomar depois
+    if (type && animation[type].isPaused) {
+      const pausedAnimation = {
+        elem, x1, y1, x2, y2, duration, callback, type,
+        currentX: x1, currentY: y1, step: 0
+      };
+      animation[type].pausedAnimations.push(pausedAnimation);
+      return;
+    }
+
     const anim = setInterval(() => {
-      if (!running) {
-        // Se foi pausado, não interrompemos a animação "no meio"
-        // (poderíamos pausar, mas complicaria).
-        // Aqui só paramos de criar novas requests. 
+      // Se estiver pausado, interromper
+      if (type && animation[type].isPaused) {
+        clearInterval(anim);
+        const pausedAnimation = {
+          elem, x1, y1, x2, y2, duration, callback, type,
+          currentX: elem.style.left.replace('px', ''),
+          currentY: elem.style.top.replace('px', ''),
+          step
+        };
+        animation[type].pausedAnimations.push(pausedAnimation);
+        return;
       }
+
       step++;
-      elem.style.left = (x1 + dx * step) + 'px';
-      elem.style.top  = (y1 + dy * step) + 'px';
+      const nx = x1 + dx * step;
+      const ny = y1 + dy * step;
+      elem.style.left = nx + 'px';
+      elem.style.top = ny + 'px';
       if (step >= steps) {
         clearInterval(anim);
+        // Decrementar contador de animações em andamento
+        if (type) {
+          animation[type].animationsInProgress--;
+        }
         if (callback) callback();
       }
     }, interval);
   }
 
-  /**************************************************************************
-   * Lógica para o fluxo SÍNCRONO
-   *   - 2 threads
-   *   - 3 requests simultâneas a cada SPAWN_INTERVAL
-   *   - Se não houver thread livre, a request ESPERA
-   *   - Bloqueia thread por DB_DURATION
-   **************************************************************************/
-  function spawnSyncRequests() {
-    // 3 "clientes" surgindo ao mesmo tempo
-    let positions = [
-      { x:20, y:40  },
-      { x:20, y:120 },
-      { x:20, y:200 }
-    ];
-    positions.forEach(pos => {
-      if (!running) return;
-      syncSent++;
-      document.getElementById("sync-sent").textContent = syncSent;
-      const arrow = createArrow("sync-diagram", pos.x, pos.y, "=>");
-      allocateThreadSync(arrow, pos);
-    });
-  }
-
-  function allocateThreadSync(arrow, startPos) {
-    if (!running) return;
-    // Acha uma thread livre
-    const idx = syncThreads.findIndex(t => t === true);
-    if (idx >= 0) {
-      // ocupa
-      syncThreads[idx] = false;
-      animateSyncRequest(arrow, idx, startPos.x, startPos.y, () => {
-        syncThreads[idx] = true; // libera
-        syncDone++;
-        document.getElementById("sync-done").textContent = syncDone;
-      });
-    } else {
-      // nenhuma thread livre => espera um pouco e tenta de novo
-      setTimeout(() => {
-        allocateThreadSync(arrow, startPos);
-      }, 300);
-    }
-  }
-
-  function animateSyncRequest(arrow, threadIndex, startX, startY, onFinish) {
-    // Posições fixas das 2 threads e do DB
-    const threadPos = [
-      { x:150, y:95 },
-      { x:150, y:155 }
-    ];
-    const dbPos = { x:310, y:120 };
-
-    const tX = threadPos[threadIndex].x;
-    const tY = threadPos[threadIndex].y;
-
-    // 1) Client -> Thread
-    moveElement(arrow, startX, startY, tX, tY, 800, () => {
-      if (!running) return;
-      // 2) Thread -> DB
-      moveElement(arrow, tX, tY, dbPos.x, dbPos.y, 1000, () => {
-        if (!running) return;
-        // 3) Bloqueio 3s
-        setTimeout(() => {
-          if (!running) return;
-          // 4) Volta DB -> Thread
-          arrow.classList.add('return');
-          moveElement(arrow, dbPos.x, dbPos.y, tX, tY, 1000, () => {
-            // 5) Thread -> Client
-            moveElement(arrow, tX, tY, startX, startY, 800, () => {
-              if (onFinish) onFinish();
-              // remove arrow da tela
-              arrow.remove();
-            });
-          });
-        }, DB_DURATION);
-      });
-    });
-  }
-
-  /**************************************************************************
-   * Lógica para o fluxo ASSÍNCRONO
-   *   - 2 threads
-   *   - 3 requests simultâneas a cada SPAWN_INTERVAL
-   *   - Se não houver thread livre no exato momento, espera
-   *   - Assim que inicia DB, thread é liberada
-   **************************************************************************/
-  function spawnAsyncRequests() {
-    let positions = [
-      { x:20, y:40,  color:'#d9534f' },
-      { x:20, y:120, color:'#5bc0de' },
-      { x:20, y:200, color:'#5cb85c' }
-    ];
-    positions.forEach(pos => {
-      if (!running) return;
-      asyncSent++;
-      document.getElementById("async-sent").textContent = asyncSent;
-      const arrow = createArrow("async-diagram", pos.x, pos.y, "=>", pos.color);
-      allocateThreadAsync(arrow, pos);
-    });
-  }
-
-  function allocateThreadAsync(arrow, startPos) {
-    if (!running) return;
-    const idx = asyncThreads.findIndex(t => t === true);
-    if (idx >= 0) {
-      asyncThreads[idx] = false; // ocupa
-      animateAsyncRequest(arrow, idx, startPos.x, startPos.y, () => {
-        // Thread liberada rápido (após CPU)
-        asyncThreads[idx] = true;
-      });
-    } else {
-      // nenhuma thread livre
-      setTimeout(() => {
-        allocateThreadAsync(arrow, startPos);
-      }, 300);
-    }
-  }
-
-  function animateAsyncRequest(arrow, threadIndex, startX, startY, onThreadFreed) {
-    const threadPos = [
-      { x:150, y:95 },
-      { x:150, y:155 }
-    ];
-    const dbPos = { x:310, y:120 };
-    const tX = threadPos[threadIndex].x;
-    const tY = threadPos[threadIndex].y;
-
-    // 1) Client -> Thread
-    moveElement(arrow, startX, startY, tX, tY, 800, () => {
-      if (!running) return;
-      // 2) Pequeno uso de CPU (500ms)
-      setTimeout(() => {
-        // thread é liberada (await no DB)
-        if (onThreadFreed) onThreadFreed();
-        if (!running) return;
-
-        // 3) Arrow vai ao DB
-        moveElement(arrow, tX, tY, dbPos.x, dbPos.y, 1000, () => {
-          if (!running) return;
-          // 4) Espera 3s no DB
-          setTimeout(() => {
-            if (!running) return;
-            // 5) Retorna do DB p/ Thread
-            arrow.classList.add('return');
-            moveElement(arrow, dbPos.x, dbPos.y, tX, tY, 1000, () => {
-              // 6) Thread -> Client
-              moveElement(arrow, tX, tY, startX, startY, 800, () => {
-                asyncDone++;
-                document.getElementById("async-done").textContent = asyncDone;
-                arrow.remove();
-              });
-            });
-          }, DB_DURATION);
-        });
-      }, CPU_DURATION);
-    });
-  }
-
-  /**************************************************************************
-   * Play, Pause, atualização de tempo e estatísticas
-   **************************************************************************/
-  function play() {
-    if (running) return;  // já está rodando
-
-    // Reset de variáveis
-    running = true;
-    syncThreads = [true, true];
-    asyncThreads = [true, true];
-
-    syncSent = 0;
-    syncDone = 0;
-    asyncSent = 0;
-    asyncDone = 0;
-    document.getElementById("sync-sent").textContent = "0";
-    document.getElementById("sync-done").textContent = "0";
-    document.getElementById("async-sent").textContent = "0";
-    document.getElementById("async-done").textContent = "0";
-
-    // Limpamos setas antigas (caso existam)
-    clearArrows("sync-diagram");
-    clearArrows("async-diagram");
-
-    // Marca tempos
-    startTimeSync = Date.now();
-    startTimeAsync = Date.now();
-
-    // Inicia intervals
-    syncTimeInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTimeSync)/1000);
-      document.getElementById("sync-time").textContent = elapsed;
-    }, 500);
-
-    asyncTimeInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTimeAsync)/1000);
-      document.getElementById("async-time").textContent = elapsed;
-    }, 500);
-
-    // A cada 2s, geramos 3 requests simultâneas em cada diagrama
-    spawnSyncRequests();  // gera imediatamente a 1ª leva
-    spawnAsyncRequests();
-    syncSpawnInterval = setInterval(() => {
-      if (!running) return;
-      spawnSyncRequests();
-    }, SPAWN_INTERVAL);
-    asyncSpawnInterval = setInterval(() => {
-      if (!running) return;
-      spawnAsyncRequests();
-    }, SPAWN_INTERVAL);
-  }
-
-  function pause() {
-    running = false;
-    // Paramos apenas de spawnar novas requisições
-    if (syncSpawnInterval) clearInterval(syncSpawnInterval);
-    if (asyncSpawnInterval) clearInterval(asyncSpawnInterval);
-    // Paramos de atualizar contadores de tempo
-    if (syncTimeInterval) clearInterval(syncTimeInterval);
-    if (asyncTimeInterval) clearInterval(asyncTimeInterval);
-  }
-
-  // Remove todas as setas de um diagrama
+  // Limpa as setas antigas e reseta o estado
   function clearArrows(diagramId) {
     const diag = document.getElementById(diagramId);
-    diag.querySelectorAll('.arrow').forEach(a => a.remove());
+    
+    // Remover setas
+    const oldArrows = diag.querySelectorAll('.arrow');
+    oldArrows.forEach(a => a.remove());
+    
+    // Reset any waiting indicators
+    const clients = diag.querySelectorAll('.client-box');
+    clients.forEach(c => c.classList.remove('waiting'));
+    
+    // Reset thread status
+    const threads = diag.querySelectorAll('.thread-box');
+    threads.forEach(t => t.classList.remove('thread-blocked'));
+    
+    // Remover indicador de status se existir
+    const statusIndicator = diag.querySelector('.status-indicator');
+    if (statusIndicator) {
+      statusIndicator.remove();
+    }
+  }
+  
+  // Helper to get thread positions
+  function getThreadPosition(diagId, threadNumber) {
+    const diagram = document.getElementById(diagId);
+    const threads = diagram.querySelectorAll('.thread-box');
+    if (threadNumber <= threads.length) {
+      const thread = threads[threadNumber - 1];
+      const rect = thread.getBoundingClientRect();
+      const diagramRect = diagram.getBoundingClientRect();
+      return {
+        x: parseInt(thread.style.left) || (rect.left - diagramRect.left + 10),
+        y: parseInt(thread.style.top) || (rect.top - diagramRect.top + 15)
+      };
+    }
+    return null;
   }
 
+  // Atualizar contadores
+  function updateCounters(type) {
+    if (type === 'sync') {
+      elements.syncCompleted.textContent = animation.sync.completed;
+      elements.syncBlocked.textContent = animation.sync.blocked;
+    } else {
+      elements.asyncCompleted.textContent = animation.async.completed;
+      elements.asyncAvailable.textContent = animation.async.available;
+    }
+  }
+
+  // Atualizar timer
+  function updateTimer(type) {
+    if (!animation[type].running) return;
+    
+    const elapsed = (Date.now() - animation[type].startTime) / 1000;
+    const timer = document.getElementById(`${type}-timer`);
+    timer.textContent = `${elapsed.toFixed(1)}s`;
+    
+    // Se todas as requisições concluídas e não há mais animações em andamento, parar timer
+    if (animation[type].completed === 3 && animation[type].animationsInProgress === 0) {
+      clearInterval(animation[type].intervalId);
+      animation[type].endTime = Date.now();
+      const totalTime = ((animation[type].endTime - animation[type].startTime) / 1000).toFixed(1);
+      document.getElementById(`${type}-time`).textContent = `${type === 'sync' ? 'Síncrono' : 'Assíncrono'}: ${totalTime}s`;
+    }
+  }
+
+  // Iniciar animação
+  function startAnimation(type) {
+    if (animation[type].running && !animation[type].isPaused) return;
+    
+    // Se estiver pausado, resumir
+    if (animation[type].isPaused) {
+      resumeAnimation(type);
+      return;
+    }
+    
+    // Resetar primeiro
+    resetAnimation(type);
+    
+    // Configurar estado
+    animation[type].running = true;
+    animation[type].startTime = Date.now();
+    animation[type].intervalId = setInterval(() => updateTimer(type), 100);
+    
+    // Atualizar botões
+    elements[`${type}Play`].disabled = true;
+    elements[`${type}Pause`].disabled = false;
+    
+    // Iniciar fluxo apropriado
+    if (type === 'sync') {
+      startSync();
+    } else {
+      startAsync();
+    }
+  }
+  
+  // Pausar animação
+  function pauseAnimation(type) {
+    if (!animation[type].running) return;
+    
+    animation[type].isPaused = true;
+    elements[`${type}Play`].disabled = false;
+    elements[`${type}Play`].textContent = '▶️ Continuar';
+    elements[`${type}Pause`].disabled = true;
+  }
+  
+  // Resumir animação
+  function resumeAnimation(type) {
+    if (!animation[type].running || !animation[type].isPaused) return;
+    
+    animation[type].isPaused = false;
+    elements[`${type}Play`].disabled = true;
+    elements[`${type}Pause`].disabled = false;
+    
+    // Retomar animações pausadas
+    const pausedAnimations = animation[type].pausedAnimations;
+    while (pausedAnimations.length > 0) {
+      const anim = pausedAnimations.pop();
+      moveElement(
+        anim.elem, 
+        parseFloat(anim.currentX), 
+        parseFloat(anim.currentY), 
+        anim.x2, 
+        anim.y2, 
+        anim.duration * (1 - anim.step / 40), 
+        anim.callback,
+        anim.type
+      );
+    }
+  }
+  
+  // Resetar animação
+  function resetAnimation(type) {
+    // Parar qualquer animação em andamento
+    clearInterval(animation[type].intervalId);
+    
+    // Limpar setas
+    clearArrows(`${type}-diagram`);
+    
+    // Resetar estado
+    animation[type].running = false;
+    animation[type].completed = 0;
+    animation[type].animationsInProgress = 0;
+    animation[type].isPaused = false;
+    animation[type].pausedAnimations = [];
+    
+    if (type === 'sync') {
+      animation.sync.blocked = 0;
+    } else {
+      animation.async.available = 2;
+    }
+    
+    // Atualizar contadores
+    updateCounters(type);
+    
+    // Resetar timer
+    document.getElementById(`${type}-timer`).textContent = '0.0s';
+    
+    // Resetar botões
+    elements[`${type}Play`].disabled = false;
+    elements[`${type}Play`].textContent = '▶️ Play';
+    elements[`${type}Pause`].disabled = true;
+  }
+  
+  // Iniciar ambas animações
+  function startBothAnimations() {
+    startAnimation('sync');
+    startAnimation('async');
+  }
+  
+  // Resetar ambas animações
+  function resetBothAnimations() {
+    resetAnimation('sync');
+    resetAnimation('async');
+    elements.syncTime.textContent = 'Síncrono: --';
+    elements.asyncTime.textContent = 'Assíncrono: --';
+  }
+
+  /* ======================================
+       FLUXO SÍNCRONO
+     ====================================== */
+  function startSync() {
+    const diagId = 'sync-diagram';
+    clearArrows(diagId);
+    
+    // Add status indicator
+    const diagram = document.getElementById(diagId);
+    const statusIndicator = document.createElement('div');
+    statusIndicator.className = 'status-indicator';
+    statusIndicator.textContent = 'Iniciando requisições...';
+    diagram.appendChild(statusIndicator);
+
+    // Posições iniciais das setinhas (3 clientes)
+    const requests = [
+      { x: 50, y: 65, color: '#d9534f', clientIndex: 0, id: 1 },
+      { x: 50, y: 155, color: '#5bc0de', clientIndex: 1, id: 2 },
+      { x: 50, y: 245, color: '#5cb85c', clientIndex: 2, id: 3 }
+    ];
+    
+    // Free threads pool
+    const threadPool = [1, 2];
+    
+    // Start all requests almost simultaneously
+    if (!animation.sync.isPaused) {
+      startRequest(0);
+      setTimeout(() => {
+        if (!animation.sync.isPaused) startRequest(1);
+      }, 300);
+      setTimeout(() => {
+        if (!animation.sync.isPaused) startRequest(2);
+      }, 600);
+    }
+    
+    function startRequest(index) {
+      if (!animation.sync.running) return;
+      
+      const request = requests[index];
+      
+      // Create arrow with id badge
+      const arrow = createArrow(diagId, request.x, request.y, '=>', request.color);
+      const requestBadge = document.createElement('div');
+      requestBadge.className = 'request-id';
+      requestBadge.style.backgroundColor = request.color;
+      requestBadge.textContent = request.id;
+      arrow.appendChild(requestBadge);
+      
+      // Check if a thread is available
+      if (threadPool.length > 0) {
+        // Get a thread from the pool
+        const threadNumber = threadPool.shift();
+        const threadPos = getThreadPosition(diagId, threadNumber);
+        
+        // Get the thread element
+        const threadElements = diagram.querySelectorAll('.thread-box');
+        const threadElem = threadElements[threadNumber - 1];
+        
+        // Client -> Thread
+        statusIndicator.textContent = `Requisição ${request.id} chegando ao servidor`;
+        moveElement(arrow, request.x, request.y, threadPos.x, threadPos.y, 700, () => {
+          if (!animation.sync.running) return;
+          
+          // Thread processing - mark thread as assigned
+          statusIndicator.textContent = `Thread ${threadNumber} processando requisição ${request.id}`;
+          
+          // Thread -> DB (Thread is blocked during this operation)
+          threadElem.classList.add('thread-blocked'); // Mark thread as blocked
+          animation.sync.blocked++;
+          updateCounters('sync');
+          
+          moveElement(arrow, threadPos.x, threadPos.y, 350, threadPos.y, 700, () => {
+            if (!animation.sync.running) return;
+            
+            // "Bloqueado" por 3s no DB
+            statusIndicator.textContent = `Thread ${threadNumber} BLOQUEADA aguardando DB (req. ${request.id})`;
+            
+            // Timeout para simular operação de I/O
+            const dbTimeout = setTimeout(() => {
+              if (!animation.sync.running) return;
+              
+              // Return DB -> Thread
+              statusIndicator.textContent = `Banco de dados respondeu para requisição ${request.id}`;
+              arrow.classList.add('return');
+              moveElement(arrow, 350, threadPos.y, threadPos.x, threadPos.y, 700, () => {
+                if (!animation.sync.running) return;
+                
+                // Thread -> Client
+                statusIndicator.textContent = `Thread ${threadNumber} enviando resposta ao cliente (req. ${request.id})`;
+                moveElement(arrow, threadPos.x, threadPos.y, request.x, request.y, 700, () => {
+                  if (!animation.sync.running) return;
+                  
+                  // Return thread to the pool
+                  threadElem.classList.remove('thread-blocked'); // Unblock thread
+                  threadPool.push(threadNumber);
+                  animation.sync.blocked--;
+                  animation.sync.completed++;
+                  updateCounters('sync');
+                  
+                  statusIndicator.textContent = `Thread ${threadNumber} liberada, voltou para o pool`;
+                  
+                  // Check if there are waiting clients and process them
+                  const waitingClients = diagram.querySelectorAll('.client-box.waiting');
+                  if (waitingClients.length > 0) {
+                    waitingClients[0].classList.remove('waiting');
+                    const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
+                    const waitingIndex = requests.findIndex(r => r.id === waitingId);
+                    startRequest(waitingIndex);
+                  } else if (threadPool.length === 2) {
+                    statusIndicator.textContent = 'Todas as requisições processadas';
+                  }
+                }, 'sync');
+              }, 'sync');
+            }, animation.sync.isPaused ? 0 : 2000);
+            
+            // Adicionar timeout à lista de pausados
+            if (animation.sync.isPaused) {
+              animation.sync.pausedAnimations.push({
+                isTimeout: true,
+                timeoutId: dbTimeout
+              });
+            }
+          }, 'sync');
+        }, 'sync');
+      } else {
+        // No thread available, make the client "wait"
+        const clients = diagram.querySelectorAll('.client-box');
+        clients[request.clientIndex].classList.add('waiting');
+        statusIndicator.textContent = `Requisição ${request.id} AGUARDANDO thread disponível`;
+      }
+    }
+  }
+
+  /* ======================================
+       FLUXO ASSÍNCRONO
+     ====================================== */
+  function startAsync() {
+    const diagId = 'async-diagram';
+    clearArrows(diagId);
+    
+    // Add status indicator
+    const diagram = document.getElementById(diagId);
+    const statusIndicator = document.createElement('div');
+    statusIndicator.className = 'status-indicator';
+    statusIndicator.textContent = 'Iniciando requisições...';
+    diagram.appendChild(statusIndicator);
+
+    const requests = [
+      { x: 50, y: 65, color: '#d9534f', clientIndex: 0, id: 1 },
+      { x: 50, y: 155, color: '#5bc0de', clientIndex: 1, id: 2 },
+      { x: 50, y: 245, color: '#5cb85c', clientIndex: 2, id: 3 }
+    ];
+    
+    // Free threads pool
+    const threadPool = [1, 2];
+    
+    // Start all requests almost simultaneously
+    if (!animation.async.isPaused) {
+      startRequest(0);
+      setTimeout(() => {
+        if (!animation.async.isPaused) startRequest(1);
+      }, 300);
+      setTimeout(() => {
+        if (!animation.async.isPaused) startRequest(2);
+      }, 600);
+    }
+    
+    function startRequest(index) {
+      if (!animation.async.running) return;
+      
+      const request = requests[index];
+      
+      // Create arrow with id badge
+      const arrow = createArrow(diagId, request.x, request.y, '=>', request.color);
+      const requestBadge = document.createElement('div');
+      requestBadge.className = 'request-id';
+      requestBadge.style.backgroundColor = request.color;
+      requestBadge.textContent = request.id;
+      arrow.appendChild(requestBadge);
+      
+      // Check if a thread is available
+      if (threadPool.length > 0) {
+        // Get a thread from the pool
+        const threadNumber = threadPool.shift();
+        animation.async.available = threadPool.length;
+        updateCounters('async');
+        
+        const threadPos = getThreadPosition(diagId, threadNumber);
+        
+        // Get the thread element
+        const threadElements = diagram.querySelectorAll('.thread-box');
+        const threadElem = threadElements[threadNumber - 1];
+        
+        // Client -> Thread
+        statusIndicator.textContent = `Requisição ${request.id} chegando ao servidor`;
+        moveElement(arrow, request.x, request.y, threadPos.x, threadPos.y, 700, () => {
+          if (!animation.async.running) return;
+          
+          // Thread processing - brief CPU work
+          statusIndicator.textContent = `Thread ${threadNumber} processando requisição ${request.id} (setup)`;
+          
+          // Quick thread work (async setup)
+          setTimeout(() => {
+            if (!animation.async.running) return;
+            
+            // *** Thread is released here (await) ***
+            statusIndicator.textContent = `Thread ${threadNumber} encontrou await, retornando ao pool`;
+            
+            // Return thread to the pool immediately
+            threadPool.push(threadNumber);
+            animation.async.available = threadPool.length;
+            updateCounters('async');
+            
+            // Check if there are waiting clients and process them
+            const waitingClients = diagram.querySelectorAll('.client-box.waiting');
+            if (waitingClients.length > 0) {
+              waitingClients[0].classList.remove('waiting');
+              const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
+              const waitingIndex = requests.findIndex(r => r.id === waitingId);
+              statusIndicator.textContent = `Thread ${threadNumber} disponível para requisição ${waitingId}`;
+              startRequest(waitingIndex);
+            }
+            
+            // Arrow continues to DB without blocking thread
+            statusIndicator.textContent = `Requisição ${request.id} continua para o DB (sem thread)`;
+            moveElement(arrow, threadPos.x, threadPos.y, 350, threadPos.y, 700, () => {
+              if (!animation.async.running) return;
+              
+              // I/O operation in DB (2s)
+              statusIndicator.textContent = `Requisição ${request.id} executando no banco de dados`;
+              
+              // Timeout para simular operação de I/O
+              const dbTimeout = setTimeout(() => {
+                if (!animation.async.running) return;
+                
+                // Get thread for completion (might be different thread)
+                if (threadPool.length === 0) {
+                  statusIndicator.textContent = `Requisição ${request.id} aguardando thread disponível`;
+                  // We'll check periodically if a thread becomes available
+                  const checkInterval = setInterval(() => {
+                    if (!animation.async.running) {
+                      clearInterval(checkInterval);
+                      return;
+                    }
+                    
+                    if (threadPool.length > 0) {
+                      clearInterval(checkInterval);
+                      continueAfterDb();
+                    }
+                  }, 300);
+                } else {
+                  continueAfterDb();
+                }
+                
+                function continueAfterDb() {
+                  if (!animation.async.running) return;
+                  
+                  const returnThreadNumber = threadPool.shift();
+                  animation.async.available = threadPool.length;
+                  updateCounters('async');
+                  
+                  const returnThreadPos = getThreadPosition(diagId, returnThreadNumber);
+                  const returnThreadElem = threadElements[returnThreadNumber - 1];
+                  
+                  // Response DB -> Thread
+                  statusIndicator.textContent = `Banco respondeu! Req. ${request.id} volta para Thread ${returnThreadNumber}`;
+                  arrow.classList.add('return');
+                  moveElement(arrow, 350, threadPos.y, returnThreadPos.x, returnThreadPos.y, 700, () => {
+                    if (!animation.async.running) return;
+                    
+                    // Quick completion work
+                    statusIndicator.textContent = `Thread ${returnThreadNumber} finalizando requisição ${request.id}`;
+                    setTimeout(() => {
+                      if (!animation.async.running) return;
+                      
+                      // Thread -> Client
+                      statusIndicator.textContent = `Thread ${returnThreadNumber} enviando resposta (req. ${request.id})`;
+                      moveElement(arrow, returnThreadPos.x, returnThreadPos.y, request.x, request.y, 700, () => {
+                        if (!animation.async.running) return;
+                        
+                        // Return thread to pool
+                        threadPool.push(returnThreadNumber);
+                        animation.async.available = threadPool.length;
+                        animation.async.completed++;
+                        updateCounters('async');
+                        
+                        statusIndicator.textContent = `Thread ${returnThreadNumber} liberada, voltou para o pool`;
+                        
+                        // Check again for waiting clients
+                        const waitingClients = diagram.querySelectorAll('.client-box.waiting');
+                        if (waitingClients.length > 0) {
+                          waitingClients[0].classList.remove('waiting');
+                          const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
+                          const waitingIndex = requests.findIndex(r => r.id === waitingId);
+                          startRequest(waitingIndex);
+                        } else if (animation.async.completed === 3) {
+                          statusIndicator.textContent = 'Todas as requisições processadas';
+                        }
+                      }, 'async');
+                    }, animation.async.isPaused ? 0 : 300);
+                  }, 'async');
+                }
+              }, animation.async.isPaused ? 0 : 2000);
+              
+              // Adicionar timeout à lista de pausados
+              if (animation.async.isPaused) {
+                animation.async.pausedAnimations.push({
+                  isTimeout: true,
+                  timeoutId: dbTimeout
+                });
+              }
+            }, 'async');
+          }, animation.async.isPaused ? 0 : 500);
+        }, 'async');
+      } else {
+        // No thread available, make the client "wait"
+        const clients = diagram.querySelectorAll('.client-box');
+        clients[request.clientIndex].classList.add('waiting');
+        statusIndicator.textContent = `Requisição ${request.id} AGUARDANDO thread disponível`;
+      }
+    }
+  }
+  
+  // Inicialização
+  document.addEventListener('DOMContentLoaded', function() {
+    // Adicionar indicadores de status iniciais
+    const syncDiag = document.getElementById('sync-diagram');
+    const asyncDiag = document.getElementById('async-diagram');
+    
+    const syncStatus = document.createElement('div');
+    syncStatus.className = 'status-indicator';
+    syncStatus.textContent = 'Pronto para iniciar';
+    syncDiag.appendChild(syncStatus);
+    
+    const asyncStatus = document.createElement('div');
+    asyncStatus.className = 'status-indicator';
+    asyncStatus.textContent = 'Pronto para iniciar';
+    asyncDiag.appendChild(asyncStatus);
+  });
 </script>
 
 </body>
