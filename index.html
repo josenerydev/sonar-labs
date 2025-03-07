@@ -21,7 +21,6 @@
     .event-log {
       position: absolute;
       top: 50px;
-      right: 10px;
       width: 210px;
       background: rgba(255, 255, 255, 0.9);
       border: 1px solid #ddd;
@@ -33,43 +32,31 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
-    .event-log-header {
-      font-weight: bold;
-      font-size: 12px;
-      padding: 5px;
-      background: #f0f0f0;
-      border-bottom: 1px solid #ddd;
-      border-radius: 5px 5px 0 0;
-      text-align: center;
-    }
-    
-    .event-list {
+    /* Event List Styles */
+    .event-list-card {
       list-style: none;
       margin: 0;
       padding: 0;
-      max-height: 220px;
+      max-height: 200px;
       overflow-y: auto;
     }
     
-    .event-list li {
-      font-size: 11px;
-      padding: 4px 8px;
+    .event-list-card li {
+      font-size: 12px;
+      padding: 6px 10px;
       border-bottom: 1px solid #eee;
       color: #333;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     
-    .event-list li:nth-child(odd) {
+    .event-list-card li:nth-child(odd) {
       background-color: #f9f9f9;
     }
     
-    .event-list li.event-request { color: #0275d8; }
-    .event-list li.event-thread { color: #5cb85c; }
-    .event-list li.event-db { color: #f0ad4e; }
-    .event-list li.event-complete { color: #5bc0de; }
-    .event-list li.event-wait { color: #d9534f; }
+    .event-list-card li.event-request { color: #0275d8; }
+    .event-list-card li.event-thread { color: #5cb85c; }
+    .event-list-card li.event-db { color: #f0ad4e; }
+    .event-list-card li.event-complete { color: #5bc0de; }
+    .event-list-card li.event-wait { color: #d9534f; }
     
     /* BOUNDARIES - dotted boxes to represent process limits */
     .client-process {
@@ -433,12 +420,6 @@
             <!-- Timer -->
             <div class="timer" id="sync-timer">0.0s</div>
             
-            <!-- Lista de eventos recentes -->
-            <div class="event-log">
-              <div class="event-log-header">Eventos Recentes (Sync)</div>
-              <ul id="sync-events" class="event-list"></ul>
-            </div>
-            
             <!-- Status Indicator -->
             <div class="status-indicator">Pronto para iniciar</div>
           </div>
@@ -488,12 +469,6 @@
             <!-- Timer -->
             <div class="timer" id="async-timer">0.0s</div>
             
-            <!-- Lista de eventos recentes -->
-            <div class="event-log">
-              <div class="event-log-header">Eventos Recentes (Async)</div>
-              <ul id="async-events" class="event-list"></ul>
-            </div>
-            
             <!-- Status Indicator -->
             <div class="status-indicator">Pronto para iniciar</div>
           </div>
@@ -502,6 +477,33 @@
             <div>Threads Disponíveis: <span id="async-available" class="badge bg-success">2</span>/2</div>
             <div>Threads Bloqueadas: <span id="async-blocked" class="badge bg-danger">0</span>/2</div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Event Logs Section -->
+  <div class="row">
+    <!-- Sync Events -->
+    <div class="col-md-6 mb-4">
+      <div class="card">
+        <div class="card-header bg-danger bg-opacity-25">
+          <h6 class="card-title mb-0">Eventos Síncronos</h6>
+        </div>
+        <div class="card-body p-2">
+          <ul id="sync-events" class="event-list-card"></ul>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Async Events -->
+    <div class="col-md-6 mb-4">
+      <div class="card">
+        <div class="card-header bg-success bg-opacity-25">
+          <h6 class="card-title mb-0">Eventos Assíncronos</h6>
+        </div>
+        <div class="card-body p-2">
+          <ul id="async-events" class="event-list-card"></ul>
         </div>
       </div>
     </div>
@@ -594,7 +596,12 @@
     
     // Criar novo item de evento
     const eventItem = document.createElement('li');
-    eventItem.textContent = message;
+    
+    // Adicionar timestamp
+    const now = new Date();
+    const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    
+    eventItem.textContent = `${timestamp} - ${message}`;
     
     // Adicionar classe para estilo
     if (category) {
