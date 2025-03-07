@@ -2,64 +2,19 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Exemplo Didático - Sync vs. Async</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f7f7f7;
-      margin: 20px;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-    .info {
-      max-width: 900px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 15px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      margin-bottom: 20px;
-      line-height: 1.6;
-    }
-    .diagram-container {
-      display: flex;
-      justify-content: center;
-      flex-wrap: nowrap;
-      max-width: 1200px;
-      margin: 0 auto;
-      position: relative;
+      background: #f8f9fa;
+      padding-top: 20px;
     }
     
-    @media (max-width: 960px) {
-      .diagram-container {
-        flex-direction: column;
-        align-items: center;
-      }
-    }
-    .section {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      width: 460px;
-      margin: 0 5px;
-      padding: 10px;
-      position: relative;
-    }
-    .section h2 {
-      text-align: center;
-      margin-top: 0;
-      margin-bottom: 10px;
-    }
-    .diagram {
-      position: relative;
-      width: 440px;
-      height: 320px;
-      border: 1px dashed #ccc;
-      margin: 0 auto;
-      overflow: hidden;
-      background: #f9f9f9;
+    .card {
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      margin-bottom: 20px;
     }
     
     /* BOUNDARIES - dotted boxes to represent process limits */
@@ -128,21 +83,32 @@
       padding: 0 5px;
     }
 
+    /* DIAGRAMA */
+    .diagram {
+      position: relative;
+      width: 100%;
+      height: 320px;
+      border: 1px dashed #dee2e6;
+      overflow: hidden;
+      background: #f9f9f9;
+      border-radius: 0.25rem;
+      margin-bottom: 10px;
+    }
+    
     /* CLIENTES (3) - quadradinhos à esquerda */
     .client-box {
       width: 90px; 
-      height: 40px;
+      height: 36px;
       background: #cfe2ff;  /* azul claro */
       border: 2px solid #6ea8fe; 
       border-radius: 5px;
       color: #333;
       text-align: center;
-      line-height: 40px;
+      line-height: 36px;
       position: absolute;
       font-weight: bold;
       font-size: 13px;
       z-index: 2;
-      position: relative;
     }
     .client-box::before {
       content: "🌐";
@@ -248,7 +214,7 @@
     }
     /* Setas que estão "voltando" (vermelho, p.ex.) */
     .arrow.return {
-      color: #d9534f;
+      color: #dc3545;
     }
     
     /* Request ID badge */
@@ -268,7 +234,7 @@
 
     /* Visual indicator for request in queue */
     .waiting {
-      border: 2px dashed #d9534f !important;
+      border: 2px dashed #dc3545 !important;
       animation: pulse 1s infinite;
     }
     @keyframes pulse {
@@ -295,137 +261,10 @@
     
     /* Contador de requisições */
     .metrics {
-      margin-top: 10px;
       display: flex;
       justify-content: space-around;
       padding: 5px;
       border-top: 1px solid #eee;
-    }
-    .counter {
-      text-align: center;
-      font-weight: bold;
-      font-size: 14px;
-    }
-    .counter span {
-      display: inline-block;
-      padding: 3px 8px;
-      background: #f0f0f0;
-      border-radius: 3px;
-      min-width: 30px;
-    }
-    
-    /* Botões unificados ao centro */
-    .central-controls {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10;
-      background: white;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-width: 140px;
-      border: 1px solid #ddd;
-    }
-    
-    .central-controls button {
-      margin: 5px 0;
-      width: 120px;
-    }
-    
-    .central-controls .timer-display {
-      margin-top: 10px;
-      text-align: center;
-      font-size: 13px;
-      font-weight: bold;
-    }
-    
-    @media (max-width: 960px) {
-      .central-controls {
-        position: static;
-        transform: none;
-        margin: 10px auto;
-        flex-direction: row;
-        flex-wrap: wrap;
-        width: 90%;
-        max-width: 460px;
-      }
-      
-      .central-controls button {
-        margin: 5px;
-      }
-    }
-    
-    /* Botões individuais (removidos) */
-    .controls {
-      display: none;
-    }
-    button {
-      margin: 0 5px;
-      padding: 8px 14px;
-      border: 1px solid #ccc;
-      background: #eee;
-      border-radius: 3px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.2s ease;
-    }
-    button:hover {
-      background: #ddd;
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    button.play-pause {
-      min-width: 80px;
-    }
-    button.primary {
-      background: #007bff;
-      color: white;
-      border-color: #0069d9;
-    }
-    button.primary:hover {
-      background: #0069d9;
-    }
-    button.secondary {
-      background: #6c757d;
-      color: white;
-      border-color: #5a6268;
-    }
-    button.secondary:hover {
-      background: #5a6268;
-    }
-    
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 15px;
-      max-width: 900px;
-      margin-left: auto;
-      margin-right: auto;
-      background: #fff;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      margin: 5px 15px;
-      font-size: 14px;
-    }
-    .legend-color {
-      width: 20px;
-      height: 20px;
-      margin-right: 8px;
-      border-radius: 3px;
     }
     
     /* Temporizador */
@@ -439,144 +278,195 @@
       font-size: 14px;
       font-weight: bold;
     }
+    
+    /* Compare indicator */
+    .comparison-indicator {
+      text-align: center;
+      padding: 5px 0;
+      font-weight: bold;
+      font-size: 0.875rem;
+    }
+    
+    /* Legend row */
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 0 10px 10px 0;
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border-radius: 3px;
+      position: relative;
+    }
   </style>
 </head>
 <body>
-
-<h1>Fluxo Síncrono vs. Assíncrono em ASP.NET Core</h1>
-
-<div class="info">
-  <strong>Cenário:</strong> 2 threads no servidor processando 3 requisições simultâneas.
-  <br><br>
-  <strong>Síncrono:</strong> Cada thread fica "presa" aguardando o banco de dados, não liberando o 
-  <em>Thread Pool</em> para outras requisições. A terceira requisição precisa aguardar até que uma thread seja liberada.
-  <br>
-  <strong>Assíncrono:</strong> Assim que a requisição inicia I/O no DB (com <code>await</code>), 
-  a thread é devolvida ao <em>Thread Pool</em> para tratar outra requisição, permitindo que todas as 3 requisições 
-  sejam processadas mesmo com apenas 2 threads disponíveis.
-</div>
-
-
-
-<div class="diagram-container">
-
-  <!-- Seção: SÍNCRONO -->
-  <div class="section">
-    <h2>Síncrono</h2>
-    <div class="diagram" id="sync-diagram">
-      <!-- Boundaries -->
-      <div class="client-process"></div>
-      <div class="client-process-label">Processo Cliente</div>
-      
-      <div class="server-process"></div>
-      <div class="server-process-label">Processo Servidor</div>
-      
-      <div class="db-process"></div>
-      <div class="db-process-label">Banco de Dados</div>
-      
-      <!-- 3 Clients -->
-      <div class="client-box" style="left:20px; top:50px;">Request 1</div>
-      <div class="client-box" style="left:20px; top:140px;">Request 2</div>
-      <div class="client-box" style="left:20px; top:230px;">Request 3</div>
-
-      <!-- Thread Pool -->
-      <div class="thread-pool"></div>
-      <div class="thread-pool-label">Thread Pool (2)</div>
-
-      <!-- 2 Threads dentro do pool -->
-      <div class="thread-box" style="left:170px; top:100px;">Thread 1</div>
-      <div class="thread-box" style="left:170px; top:180px;">Thread 2</div>
-
-      <!-- DB à direita -->
-      <div class="database">DB</div>
-      
-      <!-- Timer -->
-      <div class="timer" id="sync-timer">0.0s</div>
-    </div>
-    <div class="metrics">
-      <div class="counter">Requisições Concluídas: <span id="sync-completed">0</span>/3</div>
-      <div class="counter">Threads Bloqueadas: <span id="sync-blocked">0</span>/2</div>
+<div class="container">
+  <!-- Header Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h1 class="text-center mb-3">Fluxo Síncrono vs. Assíncrono em ASP.NET Core</h1>
+          <p class="mb-1"><strong>Cenário:</strong> 2 threads no servidor processando 3 requisições simultâneas.</p>
+          <p class="mb-2"><strong>Síncrono:</strong> Cada thread fica "presa" aguardando o banco de dados, não liberando o <em>Thread Pool</em> para outras requisições.</p>
+          <p class="mb-0"><strong>Assíncrono:</strong> Assim que a requisição inicia I/O no DB (com <code>await</code>), a thread é devolvida ao <em>Thread Pool</em>.</p>
+        </div>
+      </div>
     </div>
   </div>
   
-  <!-- Controles Centrais -->
-  <div class="central-controls">
-    <button id="play-both" class="primary">▶️ Play</button>
-    <button id="pause-both" class="secondary" disabled>⏸️ Pause</button>
-    <button id="reset-both" class="secondary">🔄 Reset</button>
-    <div class="timer-display">
-      <div id="sync-time" style="color: #dc3545;">Sinc: --</div>
-      <div id="async-time" style="color: #28a745;">Async: --</div>
+  <!-- Control Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body d-flex flex-column align-items-center">
+          <div class="d-flex gap-2 mb-2">
+            <button id="play-both" class="btn btn-primary">▶️ Iniciar Comparação</button>
+            <button id="pause-both" class="btn btn-secondary" disabled>⏸️ Pausar</button>
+            <button id="reset-both" class="btn btn-outline-secondary">🔄 Reiniciar</button>
+          </div>
+          <div class="d-flex gap-4 mt-2">
+            <div id="sync-time" class="badge bg-danger">Síncrono: --</div>
+            <div id="async-time" class="badge bg-success">Assíncrono: --</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Seção: ASSÍNCRONO -->
-  <div class="section">
-    <h2>Assíncrono</h2>
-    <div class="diagram" id="async-diagram">
-      <!-- Boundaries -->
-      <div class="client-process"></div>
-      <div class="client-process-label">Processo Cliente</div>
-      
-      <div class="server-process"></div>
-      <div class="server-process-label">Processo Servidor</div>
-      
-      <div class="db-process"></div>
-      <div class="db-process-label">Banco de Dados</div>
-      
-      <!-- 3 Clients -->
-      <div class="client-box" style="left:20px; top:50px;">Request 1</div>
-      <div class="client-box" style="left:20px; top:140px;">Request 2</div>
-      <div class="client-box" style="left:20px; top:230px;">Request 3</div>
+  <!-- Diagrams Section -->
+  <div class="row">
+    <!-- Síncrono -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-danger bg-opacity-25">
+          <h5 class="card-title text-center mb-0">Síncrono</h5>
+        </div>
+        <div class="card-body p-2">
+          <div class="diagram" id="sync-diagram">
+            <!-- Boundaries -->
+            <div class="client-process"></div>
+            <div class="client-process-label">Processo Cliente</div>
+            
+            <div class="server-process"></div>
+            <div class="server-process-label">Processo Servidor</div>
+            
+            <div class="db-process"></div>
+            <div class="db-process-label">Banco de Dados</div>
+            
+            <!-- 3 Clients -->
+            <div class="client-box" style="left:20px; top:50px;">Request 1</div>
+            <div class="client-box" style="left:20px; top:130px;">Request 2</div>
+            <div class="client-box" style="left:20px; top:210px;">Request 3</div>
 
-      <!-- Thread Pool -->
-      <div class="thread-pool"></div>
-      <div class="thread-pool-label">Thread Pool (2)</div>
+            <!-- Thread Pool -->
+            <div class="thread-pool"></div>
+            <div class="thread-pool-label">Thread Pool (2)</div>
 
-      <!-- 2 Threads dentro do pool -->
-      <div class="thread-box" style="left:170px; top:100px;">Thread 1</div>
-      <div class="thread-box" style="left:170px; top:180px;">Thread 2</div>
+            <!-- 2 Threads dentro do pool -->
+            <div class="thread-box" style="left:170px; top:100px;">Thread 1</div>
+            <div class="thread-box" style="left:170px; top:180px;">Thread 2</div>
 
-      <!-- DB à direita -->
-      <div class="database">DB</div>
-      
-      <!-- Timer -->
-      <div class="timer" id="async-timer">0.0s</div>
+            <!-- DB à direita -->
+            <div class="database">DB</div>
+            
+            <!-- Timer -->
+            <div class="timer" id="sync-timer">0.0s</div>
+          </div>
+          <div class="d-flex justify-content-around mt-2">
+            <div>Requisições: <span id="sync-completed" class="badge bg-primary">0</span>/3</div>
+            <div>Threads Bloqueadas: <span id="sync-blocked" class="badge bg-danger">0</span>/2</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="metrics">
-      <div class="counter">Requisições Concluídas: <span id="async-completed">0</span>/3</div>
-      <div class="counter">Threads Disponíveis: <span id="async-available">2</span>/2</div>
+    
+    <!-- Assíncrono -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-success bg-opacity-25">
+          <h5 class="card-title text-center mb-0">Assíncrono</h5>
+        </div>
+        <div class="card-body p-2">
+          <div class="diagram" id="async-diagram">
+            <!-- Boundaries -->
+            <div class="client-process"></div>
+            <div class="client-process-label">Processo Cliente</div>
+            
+            <div class="server-process"></div>
+            <div class="server-process-label">Processo Servidor</div>
+            
+            <div class="db-process"></div>
+            <div class="db-process-label">Banco de Dados</div>
+            
+            <!-- 3 Clients -->
+            <div class="client-box" style="left:20px; top:50px;">Request 1</div>
+            <div class="client-box" style="left:20px; top:130px;">Request 2</div>
+            <div class="client-box" style="left:20px; top:210px;">Request 3</div>
+
+            <!-- Thread Pool -->
+            <div class="thread-pool"></div>
+            <div class="thread-pool-label">Thread Pool (2)</div>
+
+            <!-- 2 Threads dentro do pool -->
+            <div class="thread-box" style="left:170px; top:100px;">Thread 1</div>
+            <div class="thread-box" style="left:170px; top:180px;">Thread 2</div>
+
+            <!-- DB à direita -->
+            <div class="database">DB</div>
+            
+            <!-- Timer -->
+            <div class="timer" id="async-timer">0.0s</div>
+          </div>
+          <div class="d-flex justify-content-around mt-2">
+            <div>Requisições: <span id="async-completed" class="badge bg-primary">0</span>/3</div>
+            <div>Threads Disponíveis: <span id="async-available" class="badge bg-success">2</span>/2</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-
-</div>
-
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-color" style="background: #cfe2ff; border: 2px solid #6ea8fe; position: relative;">
-      <span style="position: absolute; left: 1px; top: -1px; font-size: 14px;">🌐</span>
+  
+  <!-- Legend -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex flex-wrap">
+            <div class="legend-item">
+              <div class="legend-color" style="background: #cfe2ff; border: 2px solid #6ea8fe; position: relative;">
+                <span style="position: absolute; left: 1px; top: -1px; font-size: 14px;">🌐</span>
+              </div>
+              <span>Requisição Web</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #e3f9e3; border: 2px solid #5cb85c; position: relative;">
+                <span style="position: absolute; left: 1px; top: -1px; font-size: 12px;">⚙️</span>
+              </div>
+              <span>Thread Disponível</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #ffcccc; border: 2px solid #dc3545; position: relative;">
+                <span style="position: absolute; right: 1px; top: -1px; font-size: 12px;">🔒</span>
+              </div>
+              <span>Thread Bloqueada</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #f0fff0; border: 2px dashed #5cb85c;"></div>
+              <span>Thread Pool</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #fdf6ea; border: 2px solid #f0ad4e;"></div>
+              <span>Banco de Dados</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <span>Requisição Web</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #e3f9e3; border: 2px solid #5cb85c; position: relative;">
-      <span style="position: absolute; left: 1px; top: -1px; font-size: 12px;">⚙️</span>
-    </div>
-    <span>Thread Disponível</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #ffcccc; border: 2px solid #dc3545; position: relative;">
-      <span style="position: absolute; right: 1px; top: -1px; font-size: 12px;">🔒</span>
-    </div>
-    <span>Thread Bloqueada</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #f0fff0; border: 2px dashed #5cb85c;"></div>
-    <span>Thread Pool</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #fdf6ea; border: 2px solid #f0ad4e;"></div>
-    <span>Banco de Dados</span>
   </div>
 </div>
 
@@ -759,6 +649,18 @@
       animation[type].endTime = Date.now();
       const totalTime = ((animation[type].endTime - animation[type].startTime) / 1000).toFixed(1);
       document.getElementById(`${type}-time`).textContent = `${type === 'sync' ? 'Síncrono' : 'Assíncrono'}: ${totalTime}s`;
+      
+      if (type === 'sync' && animation.async.completed === 3 && animation.async.endTime > 0) {
+        // Ambos completaram, habilitar o botão de play
+        elements.playBoth.disabled = false;
+        elements.playBoth.textContent = '▶️ Play';
+        elements.pauseBoth.disabled = true;
+      } else if (type === 'async' && animation.sync.completed === 3 && animation.sync.endTime > 0) {
+        // Ambos completaram, habilitar o botão de play
+        elements.playBoth.disabled = false;
+        elements.playBoth.textContent = '▶️ Play';
+        elements.pauseBoth.disabled = true;
+      }
     }
   }
 
@@ -876,10 +778,10 @@
   function resetBothAnimations() {
     resetAnimation('sync');
     resetAnimation('async');
-    elements.syncTime.textContent = 'Sinc: --';
-    elements.asyncTime.textContent = 'Async: --';
+    elements.syncTime.textContent = 'Síncrono: --';
+    elements.asyncTime.textContent = 'Assíncrono: --';
     elements.playBoth.disabled = false;
-    elements.playBoth.textContent = '▶️ Play';
+    elements.playBoth.textContent = '▶️ Iniciar Comparação';
     elements.pauseBoth.disabled = true;
   }
 
@@ -900,8 +802,8 @@
     // Posições iniciais das setinhas (3 clientes)
     const requests = [
       { x: 50, y: 65, color: '#d9534f', clientIndex: 0, id: 1 },
-      { x: 50, y: 155, color: '#5bc0de', clientIndex: 1, id: 2 },
-      { x: 50, y: 245, color: '#5cb85c', clientIndex: 2, id: 3 }
+      { x: 50, y: 145, color: '#5bc0de', clientIndex: 1, id: 2 },
+      { x: 50, y: 225, color: '#5cb85c', clientIndex: 2, id: 3 }
     ];
     
     // Free threads pool
@@ -1032,8 +934,8 @@
 
     const requests = [
       { x: 50, y: 65, color: '#d9534f', clientIndex: 0, id: 1 },
-      { x: 50, y: 155, color: '#5bc0de', clientIndex: 1, id: 2 },
-      { x: 50, y: 245, color: '#5cb85c', clientIndex: 2, id: 3 }
+      { x: 50, y: 145, color: '#5bc0de', clientIndex: 1, id: 2 },
+      { x: 50, y: 225, color: '#5cb85c', clientIndex: 2, id: 3 }
     ];
     
     // Free threads pool
