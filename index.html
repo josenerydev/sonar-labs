@@ -199,6 +199,7 @@
       font-weight: bold;
       font-size: 13px;
       z-index: 2;
+      padding-left: 16px; /* Espaço para o ícone */
     }
     .thread-box::before {
       content: "⚙️";
@@ -322,12 +323,12 @@
     .legend-item {
       display: flex;
       align-items: center;
-      margin: 0 10px 10px 0;
+      margin: 0 15px 10px 0;
     }
     
     .legend-color {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       margin-right: 8px;
       border-radius: 3px;
       position: relative;
@@ -460,10 +461,8 @@
             <!-- Status Indicator -->
             <div class="status-indicator">Pronto para iniciar</div>
           </div>
-          <div class="d-flex justify-content-around mt-2">
+          <div class="d-flex justify-content-center mt-2">
             <div>Requisições Completas: <span id="sync-completed" class="badge">0</span></div>
-            <div>Threads Disponíveis: <span id="sync-available" class="badge">2</span>/2</div>
-            <div>Threads Bloqueadas: <span id="sync-blocked" class="badge">0</span>/2</div>
           </div>
         </div>
       </div>
@@ -506,10 +505,8 @@
             <!-- Status Indicator -->
             <div class="status-indicator">Pronto para iniciar</div>
           </div>
-          <div class="d-flex justify-content-around mt-2">
+          <div class="d-flex justify-content-center mt-2">
             <div>Requisições Completas: <span id="async-completed" class="badge">0</span></div>
-            <div>Threads Disponíveis: <span id="async-available" class="badge">2</span>/2</div>
-            <div>Threads Bloqueadas: <span id="async-blocked" class="badge">0</span>/2</div>
           </div>
         </div>
       </div>
@@ -622,10 +619,69 @@
   const DEBUG = true;
   console.log = DEBUG ? console.log.bind(console) : function(){};
   
+  // CORREÇÃO: Timer para garantir novos ciclos automaticamente
+  setInterval(function() {
+    if (animation.sync.running && !animation.sync.isPaused) {
+      if (animation.sync.activeRequests === 0 && animation.sync.animationsInProgress === 0) {
+        console.log("[TIMER] Verificando se SYNC precisa de novo ciclo");
+        if (!animation.sync.cycleInProgress) {
+          console.log("[TIMER] Iniciando novo ciclo SYNC");
+          animation.sync.cycleInProgress = true;
+          startSyncRequest(0);
+          setTimeout(() => startSyncRequest(1), 100);
+          setTimeout(() => {
+            startSyncRequest(2);
+            // Liberar a flag após iniciar todas as requisições
+            setTimeout(() => {
+              animation.sync.cycleInProgress = false;
+            }, 300);
+          }, 200);
+        }
+      }
+    }
+    
+    if (animation.async.running && !animation.async.isPaused) {
+      if (animation.async.activeRequests === 0 && animation.async.animationsInProgress === 0) {
+        console.log("[TIMER] Verificando se ASYNC precisa de novo ciclo");
+        if (!animation.async.cycleInProgress) {
+          console.log("[TIMER] Iniciando novo ciclo ASYNC");
+          animation.async.cycleInProgress = true;
+          startAsyncRequest(0);
+          setTimeout(() => startAsyncRequest(1), 100);
+          setTimeout(() => {
+            startAsyncRequest(2);
+            // Liberar a flag após iniciar todas as requisições
+            setTimeout(() => {
+              animation.async.cycleInProgress = false;
+            }, 300);
+          }, 200);
+        }
+      }
+    }
+  }, 3000);
+  
+  // Contador de ciclos
+  const cycleCounts = {
+    sync: 0,
+    async: 0
+  };
+  
   // Armazenar timeouts ativos para manipulação de pause/resume
   const activeTimeouts = {
     sync: [],
     async: []
+  };
+  
+  // Armazenar os intervalos para verificação de novos ciclos
+  const cycleCheckIntervals = {
+    sync: null,
+    async: null
+  };
+  
+  // Thread Pools compartilhados
+  const threadPools = {
+    sync: [1, 2],
+    async: [1, 2]
   };
   
   // Função para adicionar eventos à lista
@@ -674,11 +730,11 @@
       startTime: 0,
       pauseStartTime: 0,
       totalPauseTime: 0,
-      intervalId: null,
       animationsInProgress: 0,
       isPaused: false,
       pausedAnimations: [],
-      totalRequests: 0
+      activeRequests: 0, // Contador de requisições ativas atualmente
+      cycleInProgress: false // Flag para indicar se um ciclo está em andamento
     },
     async: {
       running: false,
@@ -688,11 +744,11 @@
       startTime: 0,
       pauseStartTime: 0,
       totalPauseTime: 0,
-      intervalId: null, 
       animationsInProgress: 0,
       isPaused: false,
       pausedAnimations: [],
-      totalRequests: 0
+      activeRequests: 0, // Contador de requisições ativas atualmente
+      cycleInProgress: false // Flag para indicar se um ciclo está em andamento
     }
   };
 
@@ -702,16 +758,10 @@
     asyncDiagram: document.getElementById('async-diagram'),
     syncCompleted: document.getElementById('sync-completed'),
     asyncCompleted: document.getElementById('async-completed'),
-    syncBlocked: document.getElementById('sync-blocked'),
-    syncAvailable: document.getElementById('sync-available'),
-    asyncBlocked: document.getElementById('async-blocked'),
-    asyncAvailable: document.getElementById('async-available'),
     playBoth: document.getElementById('play-both'),
     pauseBoth: document.getElementById('pause-both'),
     resetBoth: document.getElementById('reset-both'),
-    globalTimer: document.getElementById('global-timer'),
-    syncRequestsPerSecond: document.getElementById('sync-requests-per-second'),
-    asyncRequestsPerSecond: document.getElementById('async-requests-per-second')
+    globalTimer: document.getElementById('global-timer')
   };
 
   // Event listeners para os controles centrais
@@ -786,7 +836,14 @@
 
   // Move "elem" de (x1, y1) para (x2, y2) em 'duration' ms
   function moveElement(elem, x1, y1, x2, y2, duration, callback, type) {
-    if (!elem || !document.body.contains(elem)) return;
+    if (!elem || !document.body.contains(elem)) {
+      // Se o elemento não existe, garantir que decrementamos o contador
+      if (type) {
+        animation[type].animationsInProgress--;
+        if (animation[type].animationsInProgress < 0) animation[type].animationsInProgress = 0;
+      }
+      return;
+    }
     
     const steps = 40;
     let step = 0;
@@ -816,6 +873,17 @@
         cancelAnimationFrame(animId);
         if (type) {
           animation[type].animationsInProgress--;
+          if (animation[type].animationsInProgress < 0) animation[type].animationsInProgress = 0;
+        }
+        return;
+      }
+      
+      // Verificar se a animação ainda está em execução
+      if (type && !animation[type].running) {
+        cancelAnimationFrame(animId);
+        if (type) {
+          animation[type].animationsInProgress--;
+          if (animation[type].animationsInProgress < 0) animation[type].animationsInProgress = 0;
         }
         return;
       }
@@ -843,6 +911,7 @@
         // Decrementar contador de animações em andamento
         if (type) {
           animation[type].animationsInProgress--;
+          if (animation[type].animationsInProgress < 0) animation[type].animationsInProgress = 0;
         }
         if (callback) callback();
         return;
@@ -892,15 +961,97 @@
   function updateCounters(type) {
     if (type === 'sync') {
       elements.syncCompleted.textContent = animation.sync.completed;
-      elements.syncBlocked.textContent = animation.sync.blocked;
-      elements.syncAvailable.textContent = animation.sync.available;
     } else {
       elements.asyncCompleted.textContent = animation.async.completed;
-      elements.asyncAvailable.textContent = animation.async.available;
-      elements.asyncBlocked.textContent = animation.async.blocked;
     }
   }
 
+  // Função para atualizar o timer global
+  function updateGlobalTimer() {
+    if (!animation.globalStartTime) return;
+    
+    // Se estiver pausado, não atualizar o tempo
+    if (animation.sync.isPaused || animation.async.isPaused) return;
+    
+    const elapsed = (Date.now() - animation.globalStartTime - animation.globalTotalPauseTime) / 1000;
+    elements.globalTimer.textContent = `Tempo: ${Math.floor(elapsed)}s`;
+  }
+  
+  // Verificar e iniciar novo ciclo se necessário
+  function checkAndStartNewCycle(type) {
+    if (animation[type].isPaused) return;
+    
+    // Se não houver requisições ativas e não houver animações em andamento, iniciar novo ciclo
+    if (animation[type].activeRequests === 0 && animation[type].animationsInProgress === 0 && !animation[type].cycleInProgress) {
+      addEvent(type, `Iniciando novo ciclo automaticamente`, 'thread');
+      console.log(`[${type.toUpperCase()}] Starting new cycle automatically`);
+      
+      animation[type].cycleInProgress = true;
+      cycleCounts[type]++;
+      
+      // Limpar setas antigas
+      const diagram = type === 'sync' ? elements.syncDiagram : elements.asyncDiagram;
+      clearArrows(diagram);
+      
+      // Restaurar pool de threads
+      threadPools[type] = [1, 2];
+      
+      // Iniciar três novas requisições com pequenos atrasos
+      setTimeout(() => {
+        if (!animation[type].running || animation[type].isPaused) {
+          animation[type].cycleInProgress = false;
+          return;
+        }
+        
+        if (type === 'sync') {
+          startSyncRequest(0);
+          setTimeout(() => startSyncRequest(1), 100);
+          setTimeout(() => startSyncRequest(2), 200);
+        } else {
+          startAsyncRequest(0);
+          setTimeout(() => startAsyncRequest(1), 100);
+          setTimeout(() => startAsyncRequest(2), 200);
+        }
+        
+        // Reset da flag de ciclo em andamento
+        setTimeout(() => {
+          animation[type].cycleInProgress = false;
+        }, 300);
+      }, 200);
+    }
+  }
+  
+  // Monitor de estado - para diagnóstico
+  function setupStateMonitor() {
+    setInterval(() => {
+      if (DEBUG) {
+        const syncState = {
+          running: animation.sync.running,
+          isPaused: animation.sync.isPaused,
+          activeRequests: animation.sync.activeRequests,
+          animationsInProgress: animation.sync.animationsInProgress,
+          cycleInProgress: animation.sync.cycleInProgress,
+          poolSize: threadPools.sync.length,
+          cycles: cycleCounts.sync
+        };
+        
+        const asyncState = {
+          running: animation.async.running,
+          isPaused: animation.async.isPaused,
+          activeRequests: animation.async.activeRequests,
+          animationsInProgress: animation.async.animationsInProgress,
+          cycleInProgress: animation.async.cycleInProgress,
+          poolSize: threadPools.async.length,
+          cycles: cycleCounts.async
+        };
+        
+        console.log("Estado atual:");
+        console.log("SYNC:", syncState);
+        console.log("ASYNC:", asyncState);
+      }
+    }, 5000);
+  }
+  
   // Iniciar animação
   function startAnimation(type) {
     if (animation[type].running && !animation[type].isPaused) return;
@@ -911,22 +1062,19 @@
       return;
     }
     
-    // Resetar primeiro (mas manter o contador se já estava em execução)
+    // Resetar primeiro, mas manter o contador se já estava em execução
     const wasRunningBefore = animation[type].running;
-    resetAnimation(type);
+    resetAnimation(type, true); // true = manter contadores
     
     // Configurar estado
     animation[type].running = true;
     animation[type].startTime = Date.now();
     animation[type].totalPauseTime = 0;
     
-    addEvent(type, `Iniciando animação ${type === 'sync' ? 'síncrona' : 'assíncrona'}`, 'thread');
+    // Restaurar pool de threads
+    threadPools[type] = [1, 2];
     
-    // Adicionar mensagem de status de contagem
-    const statusIndicator = document.querySelector(`#${type}-diagram .status-indicator`);
-    if (statusIndicator && animation[type].completed > 0) {
-      addEvent(type, `Contagem total: ${animation[type].completed} requisições processadas`, 'complete');
-    }
+    addEvent(type, `Iniciando animação ${type === 'sync' ? 'síncrona' : 'assíncrona'}`, 'thread');
     
     // Iniciar fluxo apropriado
     if (type === 'sync') {
@@ -934,6 +1082,14 @@
     } else {
       startAsync();
     }
+    
+    // Limpar qualquer intervalo anterior antes de criar um novo
+    if (cycleCheckIntervals[type]) {
+      clearInterval(cycleCheckIntervals[type]);
+    }
+    
+    // Iniciar verificação periódica para novos ciclos e armazenar o ID do intervalo
+    cycleCheckIntervals[type] = setInterval(() => checkAndStartNewCycle(type), 500);
   }
   
   // Pausar animação
@@ -958,6 +1114,9 @@
     
     // Pausar timer global
     animation.globalPauseStartTime = Date.now();
+    
+    // Parar o intervalo do timer global
+    clearInterval(animation.globalTimerIntervalId);
     
     elements.pauseBoth.disabled = true;
     elements.playBoth.disabled = false;
@@ -997,14 +1156,23 @@
         anim.type
       );
     });
+    
+    // Verificar se precisamos iniciar um novo ciclo
+    checkAndStartNewCycle(type);
   }
   
   // Resetar animação (sem resetar contadores entre ciclos)
-  function resetAnimation(type) {
+  function resetAnimation(type, keepCounters = false) {
     console.log(`[${type.toUpperCase()}] Resetting animation`);
     
     // Parar qualquer animação em andamento
     clearInterval(animation[type].intervalId);
+    
+    // Limpar o intervalo de verificação de ciclos
+    if (cycleCheckIntervals[type]) {
+      clearInterval(cycleCheckIntervals[type]);
+      cycleCheckIntervals[type] = null;
+    }
     
     // Limpar todos os timeouts ativos
     for (const timeoutObj of activeTimeouts[type]) {
@@ -1029,15 +1197,31 @@
     animation[type].isPaused = false;
     animation[type].pausedAnimations = [];
     animation[type].totalPauseTime = 0;
+    animation[type].activeRequests = 0;
+    animation[type].cycleInProgress = false;
     
-    // Resetar threads (mas não o contador de requisições)
+    // Resetar contador de ciclos
+    if (!keepCounters) {
+      cycleCounts[type] = 0;
+    }
+    
+    // Resetar threads (mas não o contador de requisições se keepCounters=true)
     if (type === 'sync') {
       animation.sync.blocked = 0;
       animation.sync.available = 2;
+      if (!keepCounters) {
+        animation.sync.completed = 0;
+      }
     } else {
       animation.async.blocked = 0;
       animation.async.available = 2;
+      if (!keepCounters) {
+        animation.async.completed = 0;
+      }
     }
+    
+    // Restaurar pool de threads
+    threadPools[type] = [1, 2];
     
     // Atualizar contadores
     updateCounters(type);
@@ -1054,17 +1238,6 @@
     }
   }
   
-  // Função para atualizar o timer global
-  function updateGlobalTimer() {
-    if (!animation.globalStartTime) return;
-    
-    // Se estiver pausado, não atualizar o tempo
-    if (animation.sync.isPaused || animation.async.isPaused) return;
-    
-    const elapsed = (Date.now() - animation.globalStartTime - animation.globalTotalPauseTime) / 1000;
-    elements.globalTimer.textContent = `Tempo: ${Math.floor(elapsed)}s`;
-  }
-  
   // Iniciar ambas animações
   function startBothAnimations() {
     if (animation.sync.isPaused || animation.async.isPaused) {
@@ -1075,6 +1248,9 @@
       // Retomar timer global
       const pauseDuration = Date.now() - animation.globalPauseStartTime;
       animation.globalTotalPauseTime += pauseDuration;
+      
+      // Reiniciar o intervalo do timer global
+      animation.globalTimerIntervalId = setInterval(updateGlobalTimer, 100);
       
       elements.playBoth.disabled = true;
       elements.pauseBoth.disabled = false;
@@ -1087,6 +1263,9 @@
     animation.globalTotalPauseTime = 0;
     animation.globalTimerIntervalId = setInterval(updateGlobalTimer, 100);
     
+    // Iniciar o monitor de estado
+    setupStateMonitor();
+    
     startAnimation('sync');
     startAnimation('async');
     
@@ -1097,8 +1276,8 @@
   // Resetar ambas animações (incluindo contadores de requisições)
   function resetBothAnimations() {
     // Primeiro resetamos a animação
-    resetAnimation('sync');
-    resetAnimation('async');
+    resetAnimation('sync', false); // false = não manter contadores
+    resetAnimation('async', false); // false = não manter contadores
     
     // Parar e resetar timer global
     clearInterval(animation.globalTimerIntervalId);
@@ -1106,15 +1285,9 @@
     animation.globalTotalPauseTime = 0;
     elements.globalTimer.textContent = 'Tempo: 0s';
     
-    // Resetar contadores de requisições por segundo
-    elements.syncRequestsPerSecond.textContent = '0';
-    elements.asyncRequestsPerSecond.textContent = '0';
-    
     // Agora também resetamos os contadores de requisições completadas
     animation.sync.completed = 0;
     animation.async.completed = 0;
-    animation.sync.totalRequests = 0;
-    animation.async.totalRequests = 0;
     
     // Atualizar contadores na interface
     updateCounters('sync');
@@ -1135,6 +1308,26 @@
     const statusIndicator = diagram.querySelector('.status-indicator');
     statusIndicator.textContent = 'Iniciando requisições síncronas...';
 
+    // Start requests with slight delays
+    if (!animation.sync.isPaused) {
+      setTimeout(() => startSyncRequest(0), 200);
+      setTimeout(() => {
+        if (!animation.sync.isPaused) startSyncRequest(1);
+      }, 800);
+      setTimeout(() => {
+        if (!animation.sync.isPaused) startSyncRequest(2);
+      }, 1400);
+    }
+  }
+  
+  function startSyncRequest(index) {
+    if (!animation.sync.running || animation.sync.isPaused) return;
+    
+    // Incrementar contador de requisições ativas
+    animation.sync.activeRequests++;
+    
+    const diagram = elements.syncDiagram;
+    
     // Posições iniciais das setinhas (3 clientes)
     const requests = [
       { x: 50, y: 75, color: '#d9534f', clientIndex: 0, id: 1 },
@@ -1142,160 +1335,119 @@
       { x: 50, y: 255, color: '#5cb85c', clientIndex: 2, id: 3 }
     ];
     
-    // Free threads pool - usando um objeto para manter consistência entre chamadas
-    const threadPoolRef = { pool: [1, 2] };
+    const request = requests[index];
     
-    // Start requests with slight delays
-    if (!animation.sync.isPaused) {
-      createTimeout(() => startRequest(0), 200, 'sync');
-      createTimeout(() => {
-        if (!animation.sync.isPaused) startRequest(1);
-      }, 800, 'sync');
-      createTimeout(() => {
-        if (!animation.sync.isPaused) startRequest(2);
-      }, 1400, 'sync');
-    }
+    // Create arrow with id badge
+    const arrow = createArrow(diagram, request.x, request.y, '=>', request.color);
+    const requestBadge = document.createElement('div');
+    requestBadge.className = 'request-id';
+    requestBadge.style.backgroundColor = request.color;
+    requestBadge.textContent = request.id;
+    arrow.appendChild(requestBadge);
     
-    function startRequest(index) {
-      if (!animation.sync.running) return;
+    const statusIndicator = diagram.querySelector('.status-indicator');
+    
+    // Verificar quantas threads disponíveis
+    addEvent('sync', `Req ${request.id} iniciada, threads: ${threadPools.sync.length}`, 'request');
+    
+    // Check if a thread is available
+    if (threadPools.sync.length > 0) {
+      // Get a thread from the pool
+      const threadNumber = threadPools.sync.shift();
       
-      const request = requests[index];
+      // Atualizar contadores internos
+      animation.sync.blocked++;
+      animation.sync.available = threadPools.sync.length;
       
-      // Create arrow with id badge
-      const arrow = createArrow(diagram, request.x, request.y, '=>', request.color);
-      const requestBadge = document.createElement('div');
-      requestBadge.className = 'request-id';
-      requestBadge.style.backgroundColor = request.color;
-      requestBadge.textContent = request.id;
-      arrow.appendChild(requestBadge);
+      const threadPos = getThreadPosition(diagram, threadNumber);
       
-      addEvent('sync', `Req ${request.id} iniciada, threads: ${threadPoolRef.pool.length}`, 'request');
+      // Get the thread element
+      const threadElements = diagram.querySelectorAll('.thread-box');
+      const threadElem = threadElements[threadNumber - 1];
       
-      // Check if a thread is available
-      if (threadPoolRef.pool.length > 0) {
-        // Get a thread from the pool
-        const threadNumber = threadPoolRef.pool.shift();
+      // Client -> Thread
+      statusIndicator.textContent = `Requisição ${request.id} chegando ao servidor`;
+      moveElement(arrow, request.x, request.y, threadPos.x, threadPos.y, 700, () => {
+        if (!animation.sync.running) return;
         
-        // Atualizar contadores
-        animation.sync.blocked++;
-        animation.sync.available = threadPoolRef.pool.length;
-        updateCounters('sync');
+        // Thread processing - mark thread as assigned
+        statusIndicator.textContent = `Thread ${threadNumber} processando requisição ${request.id}`;
+        addEvent('sync', `Thread ${threadNumber} processando req ${request.id}`, 'thread');
         
-        const threadPos = getThreadPosition(diagram, threadNumber);
+        // Thread -> DB (Thread is blocked during this operation)
+        if (threadElem && document.body.contains(threadElem)) {
+          threadElem.classList.add('thread-blocked'); // Mark thread as blocked
+          addEvent('sync', `Thread ${threadNumber} bloqueada`, 'wait');
+        }
         
-        // Get the thread element
-        const threadElements = diagram.querySelectorAll('.thread-box');
-        const threadElem = threadElements[threadNumber - 1];
-        
-        // Client -> Thread
-        statusIndicator.textContent = `Requisição ${request.id} chegando ao servidor`;
-        moveElement(arrow, request.x, request.y, threadPos.x, threadPos.y, 700, () => {
+        moveElement(arrow, threadPos.x, threadPos.y, 350, threadPos.y, 700, () => {
           if (!animation.sync.running) return;
           
-          // Thread processing - mark thread as assigned
-          statusIndicator.textContent = `Thread ${threadNumber} processando requisição ${request.id}`;
-          addEvent('sync', `Thread ${threadNumber} processando req ${request.id}`, 'thread');
+          // "Bloqueado" por 2s no DB
+          statusIndicator.textContent = `Thread ${threadNumber} BLOQUEADA aguardando DB (SYNC, bloqueia thread)`;
+          addEvent('sync', `Aguardando DB por 2s (Thread ${threadNumber} bloqueada)`, 'db');
           
-          // Thread -> DB (Thread is blocked during this operation)
-          if (threadElem && document.body.contains(threadElem)) {
-            threadElem.classList.add('thread-blocked'); // Mark thread as blocked
-            addEvent('sync', `Thread ${threadNumber} bloqueada`, 'wait');
-          }
-          
-          moveElement(arrow, threadPos.x, threadPos.y, 350, threadPos.y, 700, () => {
+          // Timeout para simular operação de I/O
+          setTimeout(() => {
             if (!animation.sync.running) return;
             
-            // "Bloqueado" por 2s no DB
-            statusIndicator.textContent = `Thread ${threadNumber} BLOQUEADA aguardando DB (SYNC, bloqueia thread)`;
-            addEvent('sync', `Aguardando DB por 2s (Thread ${threadNumber} bloqueada)`, 'db');
-            
-            // Timeout para simular operação de I/O
-            createTimeout(() => {
-              if (!animation.sync.running) return;
-              
-              // Return DB -> Thread
-              statusIndicator.textContent = `Banco de dados respondeu para requisição ${request.id}`;
-              addEvent('sync', `DB respondeu para req ${request.id}`, 'db');
-              if (arrow && document.body.contains(arrow)) {
-                arrow.classList.add('return');
-                moveElement(arrow, 350, threadPos.y, threadPos.x, threadPos.y, 700, () => {
+            // Return DB -> Thread
+            statusIndicator.textContent = `Banco de dados respondeu para requisição ${request.id}`;
+            addEvent('sync', `DB respondeu para req ${request.id}`, 'db');
+            if (arrow && document.body.contains(arrow)) {
+              arrow.classList.add('return');
+              moveElement(arrow, 350, threadPos.y, threadPos.x, threadPos.y, 700, () => {
+                if (!animation.sync.running) return;
+                
+                // Thread -> Client
+                statusIndicator.textContent = `Thread ${threadNumber} enviando resposta ao cliente (req. ${request.id})`;
+                moveElement(arrow, threadPos.x, threadPos.y, request.x, request.y, 700, () => {
                   if (!animation.sync.running) return;
                   
-                  // Thread -> Client
-                  statusIndicator.textContent = `Thread ${threadNumber} enviando resposta ao cliente (req. ${request.id})`;
-                  moveElement(arrow, threadPos.x, threadPos.y, request.x, request.y, 700, () => {
-                    if (!animation.sync.running) return;
+                  // Return thread to the pool
+                  if (threadElem && document.body.contains(threadElem)) {
+                    threadElem.classList.remove('thread-blocked'); // Unblock thread
+                  }
+                  threadPools.sync.push(threadNumber);
+                  
+                  // Atualizar contadores
+                  animation.sync.blocked--;
+                  animation.sync.completed++;
+                  animation.sync.available = threadPools.sync.length;
+                  animation.sync.activeRequests--; // Decrementar contador de requisições ativas
+                  updateCounters('sync');
+                  
+                  addEvent('sync', `Req ${request.id} completa, thread ${threadNumber} liberada`, 'complete');
+                  
+                  statusIndicator.textContent = `Thread ${threadNumber} liberada, voltou para o pool`;
+                  
+                  // Check if there are waiting clients and process them
+                  const waitingClients = diagram.querySelectorAll('.client-box.waiting');
+                  if (waitingClients.length > 0) {
+                    waitingClients[0].classList.remove('waiting');
+                    const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
+                    const waitingIndex = requests.findIndex(r => r.id === waitingId);
                     
-                    // Return thread to the pool
-                    if (threadElem && document.body.contains(threadElem)) {
-                      threadElem.classList.remove('thread-blocked'); // Unblock thread
-                    }
-                    threadPoolRef.pool.push(threadNumber);
+                    console.log(`[SYNC] Starting waiting request ${waitingId}`);
                     
-                    // Atualizar contadores
-                    animation.sync.blocked--;
-                    animation.sync.completed++;
-                    animation.sync.available = threadPoolRef.pool.length;
-                    updateCounters('sync');
-                    
-                    addEvent('sync', `Req ${request.id} completa, thread ${threadNumber} liberada`, 'complete');
-                    
-                    statusIndicator.textContent = `Thread ${threadNumber} liberada, voltou para o pool`;
-                    
-                    // Check if there are waiting clients and process them
-                    const waitingClients = diagram.querySelectorAll('.client-box.waiting');
-                    if (waitingClients.length > 0) {
-                      waitingClients[0].classList.remove('waiting');
-                      const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
-                      const waitingIndex = requests.findIndex(r => r.id === waitingId);
-                      
-                      console.log(`[SYNC] Starting waiting request ${waitingId}`);
-                      
-                      // Start waiting request after a small delay
-                      createTimeout(() => startRequest(waitingIndex), 300, 'sync');
-                    }
-                    
-                    // Continuar processamento em loop - iniciar nova rodada imediatamente
-                    // Iniciar imediatamente novas requisições se todas da rodada atual terminaram
-                    if (animation.sync.completed % 3 === 0 && animation.sync.animationsInProgress === 0) {
-                      // Iniciar novo ciclo sem demora para maximizar processamento
-                      if (!animation.sync.isPaused) {
-                        statusIndicator.textContent = 'Iniciando novo ciclo...';
-                        statusIndicator.style.fontWeight = '';
-                        statusIndicator.style.color = '';
-                        statusIndicator.style.fontSize = '';
-                        statusIndicator.style.backgroundColor = '';
-                        statusIndicator.style.border = '';
-                        
-                        // Limpar setas e estados, mas manter contadores
-                        clearArrows(diagram);
-                        
-                        // Iniciar requisições para ciclo contínuo
-                        const requests = [
-                          { x: 50, y: 75, color: '#d9534f', clientIndex: 0, id: 1 },
-                          { x: 50, y: 165, color: '#5bc0de', clientIndex: 1, id: 2 },
-                          { x: 50, y: 255, color: '#5cb85c', clientIndex: 2, id: 3 }
-                        ];
-                        
-                        // Iniciar novas requisições em paralelo (sem esperar)
-                        startRequest(0);
-                        createTimeout(() => startRequest(1), 100, 'sync');
-                        createTimeout(() => startRequest(2), 200, 'sync');
-                      }
-                    }
-                  }, 'sync');
+                    // Start waiting request after a small delay
+                    setTimeout(() => startSyncRequest(waitingIndex), 300);
+                  }
+                  
+                  // Verificar se precisamos iniciar um novo ciclo
+                  checkAndStartNewCycle('sync');
                 }, 'sync');
-              }
-            }, 2000, 'sync');
-          }, 'sync');
+              }, 'sync');
+            }
+          }, 2000);
         }, 'sync');
-      } else {
-        // No thread available, make the client "wait"
-        const clients = diagram.querySelectorAll('.client-box');
-        clients[request.clientIndex].classList.add('waiting');
-        statusIndicator.textContent = `Requisição ${request.id} AGUARDANDO thread disponível (pool esgotado)`;
-        addEvent('sync', `Req ${request.id} espera por thread (pool vazio)`, 'wait');
-      }
+      }, 'sync');
+    } else {
+      // No thread available, make the client "wait"
+      const clients = diagram.querySelectorAll('.client-box');
+      clients[request.clientIndex].classList.add('waiting');
+      statusIndicator.textContent = `Requisição ${request.id} AGUARDANDO thread disponível (pool esgotado)`;
+      addEvent('sync', `Req ${request.id} espera por thread (pool vazio)`, 'wait');
     }
   }
 
@@ -1308,245 +1460,226 @@
     
     const statusIndicator = diagram.querySelector('.status-indicator');
     statusIndicator.textContent = 'Iniciando requisições assíncronas...';
-
+    
+    // Start requests with slight delays - same timing as sync for comparison
+    if (!animation.async.isPaused) {
+      setTimeout(() => startAsyncRequest(0), 200);
+      setTimeout(() => {
+        if (!animation.async.isPaused) startAsyncRequest(1);
+      }, 800);
+      setTimeout(() => {
+        if (!animation.async.isPaused) startAsyncRequest(2);
+      }, 1400);
+    }
+  }
+  
+  function startAsyncRequest(index) {
+    if (!animation.async.running || animation.async.isPaused) return;
+    
+    // Incrementar contador de requisições ativas
+    animation.async.activeRequests++;
+    
+    const diagram = elements.asyncDiagram;
     const requests = [
       { x: 50, y: 65, color: '#d9534f', clientIndex: 0, id: 1 },
       { x: 50, y: 145, color: '#5bc0de', clientIndex: 1, id: 2 },
       { x: 50, y: 225, color: '#5cb85c', clientIndex: 2, id: 3 }
     ];
     
-    // Free threads pool - usando um objeto para manter consistência entre chamadas
-    const threadPoolRef = { pool: [1, 2] };
+    const request = requests[index];
     
     // Track pending I/O operations for visualization
     const pendingDbOperationsRef = { operations: [] };
     
-    // Start requests with slight delays - same timing as sync for comparison
-    if (!animation.async.isPaused) {
-      createTimeout(() => startRequest(0), 200, 'async');
-      createTimeout(() => {
-        if (!animation.async.isPaused) startRequest(1);
-      }, 800, 'async');
-      createTimeout(() => {
-        if (!animation.async.isPaused) startRequest(2);
-      }, 1400, 'async');
-    }
+    const statusIndicator = diagram.querySelector('.status-indicator');
     
-    function startRequest(index) {
-      if (!animation.async.running) return;
+    // Create arrow with id badge
+    const arrow = createArrow(diagram, request.x, request.y, '=>', request.color);
+    const requestBadge = document.createElement('div');
+    requestBadge.className = 'request-id';
+    requestBadge.style.backgroundColor = request.color;
+    requestBadge.textContent = request.id;
+    arrow.appendChild(requestBadge);
+    
+    addEvent('async', `Req ${request.id} iniciada, threads: ${threadPools.async.length}`, 'request');
+    
+    // Check if a thread is available
+    if (threadPools.async.length > 0) {
+      // Get a thread from the pool
+      const threadNumber = threadPools.async.shift();
       
-      const request = requests[index];
+      // Atualizar contadores internos
+      animation.async.blocked++;
+      animation.async.available = threadPools.async.length;
       
-      // Create arrow with id badge
-      const arrow = createArrow(diagram, request.x, request.y, '=>', request.color);
-      const requestBadge = document.createElement('div');
-      requestBadge.className = 'request-id';
-      requestBadge.style.backgroundColor = request.color;
-      requestBadge.textContent = request.id;
-      arrow.appendChild(requestBadge);
+      const threadPos = getThreadPosition(diagram, threadNumber);
       
-      addEvent('async', `Req ${request.id} iniciada, threads: ${threadPoolRef.pool.length}`, 'request');
+      // Get the thread element
+      const threadElements = diagram.querySelectorAll('.thread-box');
+      const threadElem = threadElements[threadNumber - 1];
       
-      // Check if a thread is available
-      if (threadPoolRef.pool.length > 0) {
-        // Get a thread from the pool
-        const threadNumber = threadPoolRef.pool.shift();
+      // Client -> Thread
+      statusIndicator.textContent = `Requisição ${request.id} chegando ao servidor`;
+      moveElement(arrow, request.x, request.y, threadPos.x, threadPos.y, 700, () => {
+        if (!animation.async.running) return;
         
-        // Atualizar contadores
-        animation.async.blocked++;
-        animation.async.available = threadPoolRef.pool.length;
-        updateCounters('async');
+        // Thread processing - brief CPU work
+        statusIndicator.textContent = `Thread ${threadNumber} processando requisição ${request.id} (setup)`;
+        addEvent('async', `Thread ${threadNumber} processando req ${request.id}`, 'thread');
         
-        const threadPos = getThreadPosition(diagram, threadNumber);
-        
-        // Get the thread element
-        const threadElements = diagram.querySelectorAll('.thread-box');
-        const threadElem = threadElements[threadNumber - 1];
-        
-        // Client -> Thread
-        statusIndicator.textContent = `Requisição ${request.id} chegando ao servidor`;
-        moveElement(arrow, request.x, request.y, threadPos.x, threadPos.y, 700, () => {
+        // Quick thread work (async setup)
+        setTimeout(() => {
           if (!animation.async.running) return;
           
-          // Thread processing - brief CPU work
-          statusIndicator.textContent = `Thread ${threadNumber} processando requisição ${request.id} (setup)`;
-          addEvent('async', `Thread ${threadNumber} processando req ${request.id}`, 'thread');
+          // *** Thread is released here (await) - KEY DIFFERENCE ***
+          statusIndicator.textContent = `Thread ${threadNumber} encontrou await, RETORNANDO AO POOL (ASYNC)`;
           
-          // Quick thread work (async setup)
-          createTimeout(() => {
+          // Return thread to the pool immediately
+          threadPools.async.push(threadNumber);
+          
+          // Atualizar contadores
+          animation.async.blocked--;
+          animation.async.available = threadPools.async.length;
+          
+          addEvent('async', `Thread ${threadNumber} liberada no await`, 'thread');
+          
+          // Check if there are waiting clients and process them
+          const waitingClients = diagram.querySelectorAll('.client-box.waiting');
+          if (waitingClients.length > 0) {
+            waitingClients[0].classList.remove('waiting');
+            const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
+            const waitingIndex = requests.findIndex(r => r.id === waitingId);
+            
+            statusIndicator.textContent = `Thread ${threadNumber} disponível para requisição ${waitingId}`;
+            console.log(`[ASYNC] Starting waiting request ${waitingId} with newly available thread`);
+            
+            // Start waiting request after a small delay
+            setTimeout(() => startAsyncRequest(waitingIndex), 300);
+          }
+          
+          // Arrow continues to DB without blocking thread
+          statusIndicator.textContent = `Requisição ${request.id} continua para o DB (sem thread bloqueado)`;
+          moveElement(arrow, threadPos.x, threadPos.y, 350, threadPos.y, 700, () => {
             if (!animation.async.running) return;
             
-            // *** Thread is released here (await) - KEY DIFFERENCE ***
-            statusIndicator.textContent = `Thread ${threadNumber} encontrou await, RETORNANDO AO POOL (ASYNC)`;
+            // Add to pending DB operations
+            pendingDbOperationsRef.operations.push(request.id);
             
-            // Return thread to the pool immediately
-            threadPoolRef.pool.push(threadNumber);
+            // I/O operation in DB
+            statusIndicator.textContent = `Requisição ${request.id} executando no banco de dados (I/O assíncrono)`;
+            addEvent('async', `Req ${request.id} executando no DB por 2s`, 'db');
             
-            // Atualizar contadores
-            animation.async.blocked--;
-            animation.async.available = threadPoolRef.pool.length;
-            updateCounters('async');
-            
-            addEvent('async', `Thread ${threadNumber} liberada no await`, 'thread');
-            
-            // Check if there are waiting clients and process them
-            const waitingClients = diagram.querySelectorAll('.client-box.waiting');
-            if (waitingClients.length > 0) {
-              waitingClients[0].classList.remove('waiting');
-              const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
-              const waitingIndex = requests.findIndex(r => r.id === waitingId);
-              
-              statusIndicator.textContent = `Thread ${threadNumber} disponível para requisição ${waitingId}`;
-              console.log(`[ASYNC] Starting waiting request ${waitingId} with newly available thread`);
-              
-              // Start waiting request after a small delay
-              createTimeout(() => startRequest(waitingIndex), 300, 'async');
-            }
-            
-            // Arrow continues to DB without blocking thread
-            statusIndicator.textContent = `Requisição ${request.id} continua para o DB (sem thread bloqueado)`;
-            moveElement(arrow, threadPos.x, threadPos.y, 350, threadPos.y, 700, () => {
+            // Timeout para simular operação de I/O - same time as sync for comparison
+            setTimeout(() => {
               if (!animation.async.running) return;
               
-              // Add to pending DB operations
-              pendingDbOperationsRef.operations.push(request.id);
+              // Remove from pending operations
+              pendingDbOperationsRef.operations = pendingDbOperationsRef.operations.filter(id => id !== request.id);
               
-              // I/O operation in DB
-              statusIndicator.textContent = `Requisição ${request.id} executando no banco de dados (I/O assíncrono)`;
-              addEvent('async', `Req ${request.id} executando no DB por 2s`, 'db');
+              // Get thread for completion (might be different thread)
+              if (threadPools.async.length === 0) {
+                statusIndicator.textContent = `Requisição ${request.id} aguardando thread disponível (operação I/O completou)`;
+                
+                // We'll check periodically if a thread becomes available
+                const checkInterval = setInterval(() => {
+                  if (!animation.async.running) {
+                    clearInterval(checkInterval);
+                    return;
+                  }
+                  
+                  if (threadPools.async.length > 0) {
+                    clearInterval(checkInterval);
+                    continueAfterDb();
+                  }
+                }, 300);
+              } else {
+                continueAfterDb();
+              }
               
-              // Timeout para simular operação de I/O - same time as sync for comparison
-              createTimeout(() => {
+              function continueAfterDb() {
                 if (!animation.async.running) return;
                 
-                // Remove from pending operations
-                pendingDbOperationsRef.operations = pendingDbOperationsRef.operations.filter(id => id !== request.id);
-                
-                // Get thread for completion (might be different thread)
-                if (threadPoolRef.pool.length === 0) {
-                  statusIndicator.textContent = `Requisição ${request.id} aguardando thread disponível (operação I/O completou)`;
-                  
-                  // We'll check periodically if a thread becomes available
-                  const checkInterval = setInterval(() => {
-                    if (!animation.async.running) {
-                      clearInterval(checkInterval);
-                      return;
-                    }
-                    
-                    if (threadPoolRef.pool.length > 0) {
-                      clearInterval(checkInterval);
-                      continueAfterDb();
-                    }
-                  }, 300);
-                } else {
-                  continueAfterDb();
+                // Verificar se o pool foi esvaziado por algum erro
+                if (threadPools.async.length === 0) {
+                  console.log("Erro: Thread pool async está vazio. Restaurando...");
+                  threadPools.async = [1, 2];
                 }
                 
-                function continueAfterDb() {
-                  if (!animation.async.running) return;
-                  
-                  const returnThreadNumber = threadPoolRef.pool.shift();
-                  
-                  // Atualizar contadores
-                  animation.async.blocked++;
-                  animation.async.available = threadPoolRef.pool.length;
-                  updateCounters('async');
-                  
-                  const returnThreadPos = getThreadPosition(diagram, returnThreadNumber);
-                  const returnThreadElements = diagram.querySelectorAll('.thread-box');
-                  const returnThreadElem = returnThreadElements[returnThreadNumber - 1];
-                  
-                  // Response DB -> Thread
-                  statusIndicator.textContent = `Banco respondeu! Req. ${request.id} obtém Thread ${returnThreadNumber} (pode ser diferente)`;
-                  addEvent('async', `DB respondeu para req ${request.id}`, 'db');
-                  
-                  if (arrow && document.body.contains(arrow)) {
-                    arrow.classList.add('return');
-                    moveElement(arrow, 350, threadPos.y, returnThreadPos.x, returnThreadPos.y, 700, () => {
+                const returnThreadNumber = threadPools.async.shift();
+                
+                // Atualizar contadores internos
+                animation.async.blocked++;
+                animation.async.available = threadPools.async.length;
+                
+                const returnThreadPos = getThreadPosition(diagram, returnThreadNumber);
+                const returnThreadElements = diagram.querySelectorAll('.thread-box');
+                const returnThreadElem = returnThreadElements[returnThreadNumber - 1];
+                
+                // Response DB -> Thread
+                statusIndicator.textContent = `Banco respondeu! Req. ${request.id} obtém Thread ${returnThreadNumber} (pode ser diferente)`;
+                addEvent('async', `DB respondeu para req ${request.id}`, 'db');
+                
+                if (arrow && document.body.contains(arrow)) {
+                  arrow.classList.add('return');
+                  moveElement(arrow, 350, threadPos.y, returnThreadPos.x, returnThreadPos.y, 700, () => {
+                    if (!animation.async.running) return;
+                    
+                    // Quick completion work
+                    statusIndicator.textContent = `Thread ${returnThreadNumber} finalizando requisição ${request.id} (pós-await)`;
+                    
+                    setTimeout(() => {
                       if (!animation.async.running) return;
                       
-                      // Quick completion work
-                      statusIndicator.textContent = `Thread ${returnThreadNumber} finalizando requisição ${request.id} (pós-await)`;
+                      // Thread -> Client
+                      statusIndicator.textContent = `Thread ${returnThreadNumber} enviando resposta (req. ${request.id})`;
                       
-                      createTimeout(() => {
+                      moveElement(arrow, returnThreadPos.x, returnThreadPos.y, request.x, request.y, 700, () => {
                         if (!animation.async.running) return;
                         
-                        // Thread -> Client
-                        statusIndicator.textContent = `Thread ${returnThreadNumber} enviando resposta (req. ${request.id})`;
+                        // Return thread to pool
+                        threadPools.async.push(returnThreadNumber);
                         
-                        moveElement(arrow, returnThreadPos.x, returnThreadPos.y, request.x, request.y, 700, () => {
-                          if (!animation.async.running) return;
+                        // Atualizar contadores
+                        animation.async.blocked--;
+                        animation.async.completed++;
+                        animation.async.available = threadPools.async.length;
+                        animation.async.activeRequests--; // Decrementar contador de requisições ativas
+                        updateCounters('async');
+                        
+                        addEvent('async', `Req ${request.id} completa, thread ${returnThreadNumber} liberada`, 'complete');
+                        
+                        statusIndicator.textContent = `Thread ${returnThreadNumber} liberada, voltou para o pool`;
+                        
+                        // Check again for waiting clients
+                        const waitingClients = diagram.querySelectorAll('.client-box.waiting');
+                        if (waitingClients.length > 0) {
+                          waitingClients[0].classList.remove('waiting');
+                          const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
+                          const waitingIndex = requests.findIndex(r => r.id === waitingId);
                           
-                          // Return thread to pool
-                          threadPoolRef.pool.push(returnThreadNumber);
+                          console.log(`[ASYNC] Starting waiting request ${waitingId}`);
                           
-                          // Atualizar contadores
-                          animation.async.blocked--;
-                          animation.async.completed++;
-                          animation.async.available = threadPoolRef.pool.length;
-                          updateCounters('async');
-                          
-                          addEvent('async', `Req ${request.id} completa, thread ${returnThreadNumber} liberada`, 'complete');
-                          
-                          statusIndicator.textContent = `Thread ${returnThreadNumber} liberada, voltou para o pool`;
-                          
-                          // Check again for waiting clients
-                          const waitingClients = diagram.querySelectorAll('.client-box.waiting');
-                          if (waitingClients.length > 0) {
-                            waitingClients[0].classList.remove('waiting');
-                            const waitingId = parseInt(waitingClients[0].textContent.replace('Request ', ''));
-                            const waitingIndex = requests.findIndex(r => r.id === waitingId);
-                            
-                            console.log(`[ASYNC] Starting waiting request ${waitingId}`);
-                            
-                            // Start waiting request after a small delay
-                            createTimeout(() => startRequest(waitingIndex), 300, 'async');
-                          }
-                          
-                          // Continuar processamento em loop - iniciar nova rodada imediatamente
-                          // Iniciar imediatamente novas requisições se todas da rodada atual terminaram
-                          if (animation.async.completed % 3 === 0 && animation.async.animationsInProgress === 0) {
-                            // Iniciar novo ciclo sem demora para maximizar processamento
-                            if (!animation.async.isPaused) {
-                              statusIndicator.textContent = 'Iniciando novo ciclo...';
-                              statusIndicator.style.fontWeight = '';
-                              statusIndicator.style.color = '';
-                              statusIndicator.style.fontSize = '';
-                              statusIndicator.style.backgroundColor = '';
-                              statusIndicator.style.border = '';
-                              
-                              // Limpar setas e estados, mas manter contadores
-                              clearArrows(diagram);
-                              
-                              // Iniciar requisições para ciclo contínuo
-                              const requests = [
-                                { x: 50, y: 65, color: '#d9534f', clientIndex: 0, id: 1 },
-                                { x: 50, y: 145, color: '#5bc0de', clientIndex: 1, id: 2 },
-                                { x: 50, y: 225, color: '#5cb85c', clientIndex: 2, id: 3 }
-                              ];
-                              
-                              // Iniciar novas requisições em paralelo (sem esperar)
-                              startRequest(0);
-                              createTimeout(() => startRequest(1), 100, 'async');
-                              createTimeout(() => startRequest(2), 200, 'async');
-                            }
-                          }
-                        }, 'async');
-                      }, 300, 'async');
-                    }, 'async');
-                  }
+                          // Start waiting request after a small delay
+                          setTimeout(() => startAsyncRequest(waitingIndex), 300);
+                        }
+                        
+                        // Verificar se precisamos iniciar um novo ciclo
+                        checkAndStartNewCycle('async');
+                      }, 'async');
+                    }, 300);
+                  }, 'async');
                 }
-              }, 2000, 'async');
-            }, 'async');
-          }, 500, 'async');
-        }, 'async');
-      } else {
-        // No thread available, make the client "wait"
-        const clients = diagram.querySelectorAll('.client-box');
-        clients[request.clientIndex].classList.add('waiting');
-        statusIndicator.textContent = `Requisição ${request.id} AGUARDANDO thread disponível (pool esgotado)`;
-        addEvent('async', `Req ${request.id} espera por thread (pool vazio)`, 'wait');
-      }
+              }
+            }, 2000);
+          }, 'async');
+        }, 500);
+      }, 'async');
+    } else {
+      // No thread available, make the client "wait"
+      const clients = diagram.querySelectorAll('.client-box');
+      clients[request.clientIndex].classList.add('waiting');
+      statusIndicator.textContent = `Requisição ${request.id} AGUARDANDO thread disponível (pool esgotado)`;
+      addEvent('async', `Req ${request.id} espera por thread (pool vazio)`, 'wait');
     }
   }
 </script>
